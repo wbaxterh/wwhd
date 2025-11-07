@@ -1,0 +1,91 @@
+# Terraform - SECURITY CRITICAL
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+terraform.tfplan
+terraform.tfplan.*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets and keys
+secrets.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# AWS
+.aws/
+
+# Docker
+.dockerignore
+Dockerfile.prod
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Coverage
+coverage/
+*.coverage
+.nyc_output/
+
+# Package files
+*.tar.gz
+*.zip
+*.rar

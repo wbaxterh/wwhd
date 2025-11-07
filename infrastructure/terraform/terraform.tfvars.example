@@ -1,0 +1,33 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and update with your values
+
+# Project Configuration
+project_name = "wwhd"
+environment  = "dev"  # dev, staging, prod
+aws_region   = "us-west-2"
+
+# Domain Configuration (optional)
+# domain_name = "wwhd.ai"  # Uncomment and set your domain
+
+# App Runner Configuration
+app_runner_config = {
+  cpu             = "1 vCPU"
+  memory          = "2 GB"
+  max_concurrency = 100
+  max_size        = 5
+  min_size        = 1
+}
+
+# S3 Bucket Names (leave empty for auto-generation)
+s3_buckets = {
+  frontend  = ""
+  documents = ""
+}
+
+# Common Tags
+common_tags = {
+  Project     = "WWHD"
+  Owner       = "YourName"
+  Environment = "dev"
+  Repository  = "wbaxterh/wwhd"
+}
