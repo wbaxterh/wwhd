@@ -1,0 +1,200 @@
+# GitHub Spec Kit Manifest
+# W.W.H.D. - What Would Herman Do?
+
+version: 1.0.0
+name: wwhd
+description: Multi-agent Shaolin/TCM companion with RAG
+
+specifications:
+  - path: README.md
+    type: overview
+    status: complete
+    acceptance:
+      - Product vision clearly defined
+      - Quick start instructions provided
+      - Environment variables documented
+      - 2-day deploy checklist included
+
+  - path: ARCHITECTURE.md
+    type: technical
+    status: complete
+    acceptance:
+      - System components defined
+      - Sequence diagrams for core flows
+      - Network architecture specified
+      - Scaling strategy documented
+
+  - path: AGENTS.md
+    type: technical
+    status: complete
+    acceptance:
+      - All 5 agents fully specified
+      - LangGraph state machine defined
+      - Error handling documented
+      - Router accuracy target: ≥80%
+
+  - path: RAG.md
+    type: technical
+    status: complete
+    acceptance:
+      - Qdrant schema defined
+      - Chunking policy specified (1-2k chars)
+      - Citation format documented
+      - Minimum 2 sources returned
+
+  - path: DATA_MODEL.md
+    type: technical
+    status: complete
+    acceptance:
+      - Complete ER diagram
+      - All tables with schemas
+      - Migration strategy defined
+      - Token usage tracking implemented
+
+  - path: API.md
+    type: technical
+    status: complete
+    acceptance:
+      - All endpoints documented
+      - SSE/WebSocket for chat
+      - Admin endpoints defined
+      - OpenAPI spec provided
+
+  - path: SECURITY.md
+    type: technical
+    status: complete
+    acceptance:
+      - JWT authentication specified
+      - RBAC matrix defined
+      - Rate limiting configured
+      - Safety guardrails documented
+
+  - path: DEPLOYMENT.md
+    type: operational
+    status: complete
+    acceptance:
+      - AWS architecture defined
+      - Docker configuration provided
+      - CI/CD pipeline specified
+      - 48-hour deployment achievable
+
+  - path: FRONTEND.md
+    type: technical
+    status: pending
+    acceptance:
+      - assistant-ui integration plan
+      - Citation UI specified
+      - React Native scaffold defined
+
+  - path: ADMIN.md
+    type: technical
+    status: pending
+    acceptance:
+      - Upload workflow defined
+      - Namespace management UI
+      - < 3 clicks to upload and index
+
+  - path: PROMPTS.md
+    type: technical
+    status: complete
+    acceptance:
+      - Herman voice consistent
+      - Safety disclaimers included
+      - Citation format defined
+
+  - path: ROADMAP.md
+    type: planning
+    status: pending
+    acceptance:
+      - v0.1 MVP in 48 hours
+      - Clear milestones defined
+      - Feature prioritization
+
+  - path: RUNBOOK.md
+    type: operational
+    status: pending
+    acceptance:
+      - Local dev setup documented
+      - Common issues addressed
+      - On-call procedures defined
+
+  - path: TESTING.md
+    type: technical
+    status: pending
+    acceptance:
+      - Unit test strategy
+      - Integration test plan
+      - Golden test files
+
+  - path: OBSERVABILITY.md
+    type: operational
+    status: pending
+    acceptance:
+      - Metrics defined
+      - Logging strategy
+      - Tracing implementation
+
+  - path: GOVERNANCE.md
+    type: policy
+    status: pending
+    acceptance:
+      - Content curation rules
+      - Update cadence defined
+      - Takedown procedures
+
+  - path: COMPLIANCE.md
+    type: legal
+    status: pending
+    acceptance:
+      - License terms documented
+      - Data ownership clarified
+      - User content policy
+
+metrics:
+  completion: 50%
+  critical_specs: 9/9
+  optional_specs: 0/8
+
+readiness:
+  mvp_ready: true
+  production_ready: false
+  blockers:
+    - Frontend UI implementation pending
+    - Admin console not specified
+    - Testing strategy incomplete
+
+next_actions:
+  immediate:
+    - Complete FRONTEND.md specification
+    - Define admin console in ADMIN.md
+    - Create ROADMAP.md milestones
+
+  day_1:
+    - Set up AWS infrastructure
+    - Configure Qdrant Cloud
+    - Initialize repositories
+
+  day_2:
+    - Deploy backend services
+    - Deploy frontend application
+    - Run end-to-end tests
+
+team_requirements:
+  essential:
+    - Full-stack engineer (Python/TypeScript)
+    - DevOps engineer (AWS)
+
+  nice_to_have:
+    - UI/UX designer
+    - ML engineer
+
+dependencies:
+  external:
+    - OpenAI API access
+    - Qdrant Cloud account
+    - AWS account
+    - Domain name
+
+  internal:
+    - Content for initial seeding
+    - Herman's source materials
