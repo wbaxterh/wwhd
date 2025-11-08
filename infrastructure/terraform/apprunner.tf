@@ -4,6 +4,10 @@ resource "aws_apprunner_service" "backend" {
   service_name = "${local.name_prefix}-backend"
 
   source_configuration {
+    authentication_configuration {
+      access_role_arn = aws_iam_role.apprunner_service.arn
+    }
+
     image_repository {
       image_identifier      = "${aws_ecr_repository.backend.repository_url}:latest"
       image_repository_type = "ECR"
@@ -19,13 +23,14 @@ resource "aws_apprunner_service" "backend" {
           S3_DOCUMENTS_BUCKET   = aws_s3_bucket.documents.bucket
         }
 
-        runtime_environment_secrets = {
-          JWT_SECRET         = aws_secretsmanager_secret.app_secrets["jwt_secret"].arn
-          OPENAI_API_KEY     = aws_secretsmanager_secret.app_secrets["openai_api_key"].arn
-          OPENROUTER_API_KEY = aws_secretsmanager_secret.app_secrets["openrouter_api_key"].arn
-          QDRANT_API_KEY     = aws_secretsmanager_secret.app_secrets["qdrant_api_key"].arn
-          DATABASE_URL       = aws_secretsmanager_secret.app_secrets["database_url"].arn
-        }
+# Commented out for health check deployment - uncomment when we need secrets
+        # runtime_environment_secrets = {
+        #   JWT_SECRET         = aws_secretsmanager_secret.app_secrets["jwt_secret"].arn
+        #   OPENAI_API_KEY     = aws_secretsmanager_secret.app_secrets["openai_api_key"].arn
+        #   OPENROUTER_API_KEY = aws_secretsmanager_secret.app_secrets["openrouter_api_key"].arn
+        #   QDRANT_API_KEY     = aws_secretsmanager_secret.app_secrets["qdrant_api_key"].arn
+        #   DATABASE_URL       = aws_secretsmanager_secret.app_secrets["database_url"].arn
+        # }
 
         start_command = "uvicorn main:app --host 0.0.0.0 --port 8000"
       }
@@ -35,9 +40,10 @@ resource "aws_apprunner_service" "backend" {
   }
 
   instance_configuration {
-    cpu               = var.app_runner_config.cpu
-    memory            = var.app_runner_config.memory
-    instance_role_arn = aws_iam_role.apprunner_instance.arn
+    cpu    = var.app_runner_config.cpu
+    memory = var.app_runner_config.memory
+    # No instance role needed for health check app
+    # instance_role_arn = aws_iam_role.apprunner_instance.arn
   }
 
   auto_scaling_configuration_arn = aws_apprunner_auto_scaling_configuration_version.backend.arn

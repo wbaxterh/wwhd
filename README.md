@@ -142,7 +142,16 @@ npm run test --prefix frontend
 # Docker
 docker-compose up -d        # Full stack
 docker-compose logs -f backend
+
+# Infrastructure Deployment
+./infrastructure/scripts/setup-ecs.sh  # Deploy to AWS ECS
 ```
+
+## Infrastructure Documentation
+
+- **[Platform Architecture](PLATFORM-INFRA.md)** - Complete infrastructure overview
+- **[Infrastructure Changes](InfraChanges/)** - Change log for all infrastructure modifications
+  - [infra-change-001.md](InfraChanges/infra-change-001.md) - ECS Fargate + Qdrant deployment setup
 
 ## Acceptance Criteria
 

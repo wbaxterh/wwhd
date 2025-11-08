@@ -1,0 +1,137 @@
+{
+  "family": "wwhd-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::018025611404:role/wwhd-dev-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::018025611404:role/wwhd-dev-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "fastapi",
+      "image": "018025611404.dkr.ecr.us-west-2.amazonaws.com/wwhd-dev-backend:latest",
+      "cpu": 768,
+      "memory": 1536,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "APP_ENV",
+          "value": "production"
+        },
+        {
+          "name": "QDRANT_URL",
+          "value": "http://localhost:6333"
+        },
+        {
+          "name": "SQLITE_PATH",
+          "value": "/data/wwhd.db"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "value": "INFO"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:018025611404:secret:wwhd-dev/openai_api_key-ZkW4Ok:value::"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:018025611404:secret:wwhd-dev/jwt_secret-b72WLc:value::"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "data",
+          "containerPath": "/data"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/wwhd-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "fastapi"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    },
+    {
+      "name": "qdrant",
+      "image": "qdrant/qdrant:v1.7.4",
+      "cpu": 256,
+      "memory": 512,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 6333,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "QDRANT__SERVICE__HTTP_PORT",
+          "value": "6333"
+        },
+        {
+          "name": "QDRANT__LOG_LEVEL",
+          "value": "INFO"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "data",
+          "containerPath": "/qdrant/storage"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/wwhd-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "qdrant"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:6333/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-PLACEHOLDER",
+        "rootDirectory": "/",
+        "transitEncryption": "ENABLED",
+        "authorizationConfig": {
+          "accessPointId": "fsap-PLACEHOLDER",
+          "iam": "ENABLED"
+        }
+      }
+    }
+  ]
+}
