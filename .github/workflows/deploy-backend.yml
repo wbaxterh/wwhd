@@ -20,6 +20,9 @@ jobs:
     name: Deploy Backend
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
     - name: Checkout
