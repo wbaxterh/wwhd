@@ -1,0 +1,135 @@
+# WWHD Project Instructions for Claude
+
+## 🔍 MANDATORY: Always Review Specifications Before Implementation
+
+**CRITICAL RULE**: Before implementing ANY code changes, you MUST:
+
+1. **Read the relevant specification files first**:
+   - `AGENTS.md` - For agent behavior, prompts, namespaces, and workflow
+   - `ARCHITECTURE.md` - For system design and component interactions
+   - `API.md` - For endpoint specifications and data schemas
+   - `RAG.md` - For retrieval and embedding requirements
+   - `SECURITY.md` - For authentication and safety requirements
+
+2. **Implement code to match specifications, NOT the other way around**:
+   - The .md files contain the authoritative design
+   - Code should be updated to align with specifications
+   - Only update .md files for deployment/infrastructure changes
+   - Never change core agent logic, prompts, or namespaces in specs
+
+3. **Verification checklist before any implementation**:
+   - [ ] Read relevant specification file(s)
+   - [ ] Identify what needs to change in code vs specs
+   - [ ] Implement code changes to match specification
+   - [ ] Test that implementation follows the design
+   - [ ] Update only deployment-related documentation if needed
+
+## 📋 Project Overview
+
+### Architecture
+- **Backend**: FastAPI + LangGraph multi-agent system (this repo)
+- **Frontend**: Next.js + assistant-ui (separate `wwhd-frontend` repo)
+- **Mobile**: React Native (future `wwhd-mobile` repo)
+- **Deployment**: ECS Fargate (backend) + AWS Amplify (frontend)
+
+### Core Agent System (DO NOT CHANGE WITHOUT REVIEWING AGENTS.md)
+1. **RouterAgent**: Intent classification → namespace selection
+   - Namespaces: relationships, money, business, feng_shui, diet_food, exercise_martial_arts, meditation, general
+   - Confidence thresholds and routing rules in AGENTS.md
+2. **LibrarianAgent**: Vector retrieval from Qdrant with namespace filtering
+3. **InterpreterAgent**: Response generation in Herman's voice with citations
+4. **SafetyAgent**: Content moderation and disclaimer injection
+
+### Data Flow (AS PER ARCHITECTURE.md)
+RouterAgent → LibrarianAgent → InterpreterAgent → SafetyAgent → User
+
+## 🚨 Common Mistakes to Avoid
+
+1. **❌ Changing agent specifications without reading AGENTS.md**
+   - Agent prompts, namespaces, and behavior are defined in AGENTS.md
+   - Always implement code to match the specifications
+
+2. **❌ Modifying core architecture without checking ARCHITECTURE.md**
+   - System flow, state schema, and component interactions are specified
+   - Implementation should follow the documented patterns
+
+3. **❌ Adding new endpoints without reviewing API.md**
+   - API contracts and schemas are defined in the specification
+   - New endpoints should match existing patterns
+
+4. **❌ Changing deployment without understanding current setup**
+   - Current: ECS Fargate + self-hosted Qdrant + SQLite on EFS
+   - Frontend: AWS Amplify in separate repository
+   - Don't assume Terraform, App Runner, or other deployment methods
+
+## 🎯 Implementation Workflow
+
+### For Agent Changes:
+1. Read `AGENTS.md` thoroughly
+2. Identify what agent behavior should be
+3. Update code in `backend/agents/` to match specification
+4. Test that routing, retrieval, interpretation work as designed
+
+### For API Changes:
+1. Review `API.md` for endpoint specifications
+2. Check existing patterns in `backend/api/`
+3. Implement following the documented schemas
+4. Update OpenAPI docs if needed
+
+### For Architecture Changes:
+1. Review `ARCHITECTURE.md` for system design
+2. Understand component interactions and data flow
+3. Implement following the state machine and patterns
+4. Update architecture docs only if infrastructure changes
+
+### For Deployment Changes:
+1. Review `DEPLOYMENT.md` for current ECS setup
+2. Understand multi-repo structure (backend here, frontend separate)
+3. Use ECS scripts, not Terraform
+4. Update deployment docs for infrastructure changes only
+
+## 🔧 Development Commands
+
+```bash
+# Backend development
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Testing
+pytest backend/tests/ -v
+
+# Docker
+docker build -t wwhd-backend .
+docker run -p 8000:8000 wwhd-backend
+
+# Database migrations
+alembic upgrade head
+
+# Infrastructure deployment
+./infrastructure/scripts/setup-ecs.sh
+```
+
+## 📁 Key Files to Always Check
+
+- `AGENTS.md` - Agent specifications and prompts
+- `ARCHITECTURE.md` - System design and component interactions
+- `API.md` - Endpoint specifications and schemas
+- `RAG.md` - Vector database and retrieval specs
+- `SECURITY.md` - Authentication and safety requirements
+- `DEPLOYMENT.md` - Infrastructure and deployment procedures
+- `backend/agents/orchestrator.py` - Main agent coordination
+- `backend/api/chat.py` - Chat endpoints and integration
+- `backend/config.py` - Configuration management
+
+## 🎭 Herman Siu's Voice (FOR INTERPRETER AGENT)
+
+When implementing InterpreterAgent responses:
+- Warm, wise, and practical tone
+- Specific, actionable advice
+- References to traditional wisdom when appropriate
+- Natural conversation flow
+- Focus on holistic well-being
+- Authentic to Herman's philosophy
+
+Remember: The specifications define HOW the system should work. Code implements the specifications, not the other way around.
