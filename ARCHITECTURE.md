@@ -26,7 +26,7 @@ graph TB
     subgraph "Data Layer"
         Qdrant[(Qdrant Vector DB)]
         SQLite[(SQLite DB)]
-        S3[S3 Document Store]
+        EFS[EFS Storage]
     end
 
     subgraph "LLM Services"
@@ -49,7 +49,7 @@ graph TB
     Librarian --> OpenAI
     Librarian --> OpenRouter
     FastAPI --> SQLite
-    Admin --> S3
+    Admin --> EFS
 ```
 
 ## Component Architecture
@@ -65,13 +65,13 @@ graph TB
 | Cache | Redis (optional) | Session cache, rate limiting |
 | Queue | Celery (optional) | Document processing jobs |
 
-### Frontend Applications
+### Multi-Repository Structure
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Web Chat | Next.js 14 + assistant-ui | Primary chat interface |
-| Admin Console | Next.js 14 | Document management UI |
-| Mobile App | React Native 0.72+ | iOS/Android chat client |
+| Repository | Technology | Deployment | Purpose |
+|------------|------------|------------|---------||
+| **wwhd** (Backend) | FastAPI + LangGraph | ECS Fargate | API server, agent orchestration |
+| **wwhd-frontend** | Next.js 14 + assistant-ui | AWS Amplify | Web chat interface |
+| **wwhd-mobile** (Future) | React Native 0.72+ | Expo + App Store | Mobile chat client |
 
 ## Sequence Diagrams
 
@@ -228,7 +228,34 @@ class ConversationState(TypedDict):
 
 ## Network Architecture
 
-### AWS Deployment (Option A: App Runner)
+### Multi-Repository Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend Repository: wwhd-frontend"
+        NextJS[Next.js Chat UI]
+        Amplify[AWS Amplify Deployment]
+    end
+
+    subgraph "Backend Repository: wwhd (this repo)"
+        FastAPI[FastAPI + LangGraph]
+        ECS[ECS Fargate Deployment]
+    end
+
+    subgraph "Mobile Repository: wwhd-mobile (future)"
+        RN[React Native App]
+        Expo[Expo Deployment]
+    end
+
+    NextJS --> Amplify
+    FastAPI --> ECS
+    RN --> Expo
+
+    NextJS -.->|API Calls| FastAPI
+    RN -.->|API Calls| FastAPI
+```
+
+### ECS Fargate Deployment (Current Implementation)
 
 ```mermaid
 graph TB
@@ -237,67 +264,27 @@ graph TB
     end
 
     subgraph "AWS Cloud"
-        subgraph "Edge"
-            CF[CloudFront CDN]
-            R53[Route53 DNS]
+        subgraph "Frontend (Separate Repo)"
+            Amplify[AWS Amplify<br/>Next.js Frontend]
         end
 
-        subgraph "Application"
+        subgraph "Backend (This Repo)"
             ALB[Application Load Balancer]
-            AR[App Runner<br/>FastAPI Backend]
-            S3Web[S3 Static Site<br/>Next.js Frontend]
-        end
-
-        subgraph "Data"
-            QC[Qdrant Cloud]
-            S3Doc[S3 Documents]
-            RDS[RDS SQLite/PostgreSQL]
-        end
-    end
-
-    Users --> R53
-    R53 --> CF
-    CF --> S3Web
-    CF --> ALB
-    ALB --> AR
-    AR --> QC
-    AR --> S3Doc
-    AR --> RDS
-```
-
-### AWS Deployment (Option B: ECS Fargate)
-
-```mermaid
-graph TB
-    subgraph "Internet"
-        Users[Users]
-    end
-
-    subgraph "AWS VPC"
-        subgraph "Public Subnets"
-            ALB[Application Load Balancer]
-            NAT[NAT Gateway]
-        end
-
-        subgraph "Private Subnets"
-            subgraph "ECS Cluster"
-                Backend[Fargate Service<br/>FastAPI]
-                Qdrant[Fargate Service<br/>Qdrant]
+            subgraph "ECS Fargate"
+                FastAPI[FastAPI Container]
+                Qdrant[Qdrant Container]
             end
-            RDS[(RDS PostgreSQL)]
+            EFS[EFS Persistent Storage]
         end
     end
 
-    subgraph "Storage"
-        S3[S3 Buckets]
-    end
-
+    Users --> Amplify
     Users --> ALB
-    ALB --> Backend
-    Backend --> Qdrant
-    Backend --> RDS
-    Backend --> NAT
-    NAT --> S3
+    ALB --> FastAPI
+    FastAPI --> Qdrant
+    FastAPI --> EFS
+    Qdrant --> EFS
+    Amplify -.->|API Calls| ALB
 ```
 
 ## Scaling Considerations
@@ -475,6 +462,6 @@ Production:
 - ✅ Auto-scales based on load
 - ✅ Failover completes in < 60 seconds
 - ✅ All components containerized
-- ✅ Infrastructure as Code (Terraform/CDK)
+- ✅ Infrastructure as Code (ECS setup scripts)
 - ✅ Zero-downtime deployments
 - ✅ Monitoring alerts configured

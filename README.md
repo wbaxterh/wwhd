@@ -4,43 +4,74 @@ A calm, reliable chat app where an orchestrator agent routes user questions to f
 
 ## Quick Start
 
+### Backend Development (This Repo)
 ```bash
-# Clone repository
-git clone https://github.com/your-org/wwhd.git
+# Clone backend repository
+git clone https://github.com/wbaxterh/wwhd.git
 cd wwhd
 
-# Copy environment variables
+# Set up backend environment
+cd backend
 cp .env.example .env
-# Configure your keys in .env
+# Edit .env and add your OpenAI API key
 
-# Start all services
-make dev
+# Install dependencies
+pip install -r requirements.txt
 
-# Access services
-# Web UI: http://localhost:3000
-# Backend API: http://localhost:8000
-# Qdrant UI: http://localhost:6333/dashboard
+# Run locally
+uvicorn main:app --reload --port 8000
 ```
 
-## Repository Structure
+### Frontend (Separate Repository)
+```bash
+# Frontend will be deployed via AWS Amplify
+# Repository: wwhd-frontend (to be created)
+# Live at: https://wwhd.amplifyapp.com
+```
 
+### Live Deployment
+- **Backend API**: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
+- **API Docs**: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com/docs
+- **Frontend**: Will be deployed to AWS Amplify (separate repo)
+
+## Multi-Repository Structure
+
+### 📁 wwhd/ (Backend - This Repository)
 ```
 wwhd/
 ├── backend/              # FastAPI + LangGraph orchestration
 │   ├── agents/          # LangGraph agent implementations
+│   │   ├── orchestrator.py  # Main routing agent
+│   │   ├── tcm_specialist.py # Traditional Chinese Medicine
+│   │   ├── relationship.py   # Relationship counseling
+│   │   ├── money.py         # Financial wisdom
+│   │   └── feng_shui.py     # Feng Shui guidance
 │   ├── api/            # REST endpoints + WebSocket/SSE
 │   ├── models/         # SQLAlchemy models
 │   ├── rag/            # Qdrant integration
-│   └── auth/           # JWT authentication
-├── frontend/            # Next.js + assistant-ui
-│   ├── components/     # React components
-│   └── lib/           # API clients
-├── mobile/              # React Native placeholder
-├── admin/               # Admin console (Next.js)
-├── migrations/          # SQL migrations
-├── scripts/            # Deployment & data scripts
-├── tests/              # Test suites
-└── docs/               # Additional documentation
+│   ├── schemas/        # Pydantic schemas
+│   └── config.py       # Environment configuration
+├── infrastructure/      # AWS ECS deployment
+├── .github/workflows/   # CI/CD for backend
+└── docs/               # Documentation
+```
+
+### 📁 wwhd-frontend/ (Web UI - Separate Repository)
+```
+wwhd-frontend/
+├── components/          # React components
+├── lib/                # API clients
+├── pages/              # Next.js pages
+├── styles/             # CSS/Tailwind
+└── amplify.yml         # AWS Amplify deployment
+```
+
+### 📁 wwhd-mobile/ (Mobile App - Future Repository)
+```
+wwhd-mobile/
+├── src/                # React Native
+├── shared/             # Shared logic with web
+└── app.json           # Expo configuration
 ```
 
 ## Environment Variables
@@ -74,23 +105,27 @@ APP_ENV=dev
 LOG_LEVEL=INFO
 ```
 
-## 2-Day Deploy Checklist
+## Deployment Architecture
 
-### Day 1: Core Infrastructure
-- [ ] Set up AWS account & configure IAM
-- [ ] Deploy Qdrant Cloud instance (or ECS self-hosted)
-- [ ] Configure GitHub repository & Actions
-- [ ] Set up App Runner / ECS Fargate for backend
-- [ ] Deploy CloudFront + S3 for frontend
-- [ ] Configure Route53 domain & SSL
+### ✅ Backend (ECS Fargate) - DEPLOYED
+- **Infrastructure**: AWS ECS Fargate with Application Load Balancer
+- **Database**: SQLite on EFS for chat history + Qdrant for vectors
+- **CI/CD**: GitHub Actions → ECR → ECS (3-minute deployments)
+- **API**: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
+- **Status**: ✅ Live and ready for development
 
-### Day 2: Application & Testing
-- [ ] Deploy backend with environment configs
-- [ ] Deploy frontend with API endpoints
-- [ ] Seed initial RAG namespaces
-- [ ] Upload sample documents
-- [ ] Test chat flow end-to-end
-- [ ] Configure monitoring & alerts
+### 🚧 Frontend (AWS Amplify) - PLANNED
+- **Repository**: wwhd-frontend (to be created)
+- **Technology**: Next.js + assistant-ui
+- **Deployment**: AWS Amplify with automatic Git deployments
+- **Domain**: https://wwhd.amplifyapp.com
+- **Status**: 🚧 Ready to be created
+
+### 📱 Mobile App (React Native) - FUTURE
+- **Repository**: wwhd-mobile (future)
+- **Technology**: React Native with shared API client
+- **Deployment**: Expo + App Store/Play Store
+- **Status**: 📱 Planned for Phase 2
 
 ## Live Demo Plan
 
@@ -165,17 +200,19 @@ docker-compose logs -f backend
 
 ## Technology Stack
 
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| Orchestration | LangGraph (Python) | Stateful multi-agent workflows |
-| LLM | OpenAI / OpenRouter | Flexible model selection |
-| Vector DB | Qdrant | Production-ready, namespace support |
-| Backend | FastAPI | Async, streaming, WebSocket support |
-| Database | SQLite → PostgreSQL | Simple start, clear migration path |
-| Auth | JWT | Stateless, role-based |
-| Frontend | Next.js + assistant-ui | Production chat UI patterns |
-| Mobile | React Native | Code sharing with web |
-| Deploy | AWS (App Runner/ECS) | Managed containers, quick setup |
+| Component | Technology | Status | Rationale |
+|-----------|------------|--------|-----------|
+| **Backend Orchestration** | LangGraph (Python) | ✅ Deployed | Stateful multi-agent workflows |
+| **LLM Provider** | OpenAI / OpenRouter | ✅ Configured | Flexible model selection |
+| **Vector Database** | Qdrant (Self-hosted) | ✅ Running | Namespace support, cost-effective |
+| **Chat Database** | SQLite on EFS | ✅ Running | Fast queries, ACID compliance |
+| **Backend API** | FastAPI | ✅ Deployed | Async, streaming, WebSocket support |
+| **Authentication** | JWT | ✅ Implemented | Stateless, role-based |
+| **Backend Deploy** | ECS Fargate + ALB | ✅ Live | Managed containers, auto-scaling |
+| **CI/CD** | GitHub Actions | ✅ Working | 3-minute push-to-deploy |
+| **Frontend** | Next.js + assistant-ui | 🚧 Planned | Production chat UI patterns |
+| **Frontend Deploy** | AWS Amplify | 🚧 Ready | Git-based deployments |
+| **Mobile** | React Native | 📱 Future | Code sharing with web |
 
 ## Getting Help
 

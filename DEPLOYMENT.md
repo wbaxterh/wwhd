@@ -1,25 +1,35 @@
 # Deployment
 
-## AWS Architecture - 48 Hour MVP
+## AWS Architecture - Multi-Repository Deployment
 
-### Option A: App Runner (Recommended for MVP)
+### Current Implementation: ECS Fargate + AWS Amplify
 
 ```mermaid
 graph TB
-    subgraph "AWS Cloud"
-        R53[Route53]
-        CF[CloudFront]
-        S3[S3 Static Site]
-        AR[App Runner]
-        QC[Qdrant Cloud]
-        SM[Secrets Manager]
+    subgraph "Frontend Repository: wwhd-frontend"
+        NextJS[Next.js Chat UI]
+        Amplify[AWS Amplify]
     end
 
-    R53 --> CF
-    CF --> S3
-    CF --> AR
-    AR --> QC
-    AR --> SM
+    subgraph "Backend Repository: wwhd (this repo)"
+        FastAPI[FastAPI + LangGraph]
+        ECS[ECS Fargate]
+        ALB[Application Load Balancer]
+        EFS[EFS Storage]
+    end
+
+    subgraph "Data Layer"
+        SQLite[(SQLite on EFS)]
+        Qdrant[(Self-hosted Qdrant)]
+    end
+
+    NextJS --> Amplify
+    FastAPI --> ECS
+    ECS --> ALB
+    ECS --> EFS
+    SQLite --> EFS
+    Qdrant --> EFS
+    Amplify -.->|API Calls| ALB
 ```
 
 **Deployment Steps**:
@@ -42,7 +52,7 @@ graph TB
 6. Enable monitoring
 ```
 
-### Option B: ECS Fargate (Production-Ready)
+### ECS Fargate Configuration (Current Implementation)
 
 ```yaml
 infrastructure:
@@ -71,66 +81,51 @@ infrastructure:
     option_2: Self-hosted Qdrant on ECS
 ```
 
-## Infrastructure as Code
+## Infrastructure Setup
 
-### Terraform Configuration
+### ECS Fargate Setup Scripts (Current Implementation)
 
-```hcl
-# main.tf
-provider "aws" {
-  region = "us-west-2"
-}
+```bash
+#!/bin/bash
+# infrastructure/scripts/setup-ecs.sh
 
-# App Runner Service
-resource "aws_apprunner_service" "api" {
-  service_name = "wwhd-api"
+# Create ECS cluster
+aws ecs create-cluster --cluster-name wwhd-cluster
 
-  source_configuration {
-    image_repository {
-      image_identifier      = "${aws_ecr_repository.api.repository_url}:latest"
-      image_repository_type = "ECR"
-    }
-  }
+# Create EFS file system for persistent storage
+aws efs create-file-system --tags Key=Name,Value=wwhd-efs
 
-  instance_configuration {
-    cpu               = "1 vCPU"
-    memory            = "2 GB"
-    instance_role_arn = aws_iam_role.apprunner.arn
-  }
+# Create security groups
+aws ec2 create-security-group \
+  --group-name wwhd-sg \
+  --description "Security group for WWHD application"
 
-  auto_scaling_configuration {
-    max_concurrency = 100
-    max_size        = 10
-    min_size        = 1
-  }
-}
+# Create Application Load Balancer
+aws elbv2 create-load-balancer \
+  --name wwhd-alb \
+  --subnets subnet-xxx subnet-yyy \
+  --security-groups sg-xxx
 
-# S3 for Frontend
-resource "aws_s3_bucket" "frontend" {
-  bucket = "wwhd-frontend"
+# Create ECS task definition
+aws ecs register-task-definition \
+  --cli-input-json file://infrastructure/task-definition.json
 
-  website {
-    index_document = "index.html"
-    error_document = "404.html"
-  }
-}
+# Create ECS service
+aws ecs create-service \
+  --cluster wwhd-cluster \
+  --service-name wwhd-service \
+  --task-definition wwhd-task \
+  --desired-count 2
+```
 
-# CloudFront Distribution
-resource "aws_cloudfront_distribution" "cdn" {
-  origin {
-    domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
-    origin_id   = "S3-frontend"
-  }
+### AWS Amplify Setup (Frontend Repository)
 
-  enabled             = true
-  default_root_object = "index.html"
-
-  default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-frontend"
-  }
-}
+```bash
+# In wwhd-frontend repository
+npm install -g @aws-amplify/cli
+amplify init
+amplify add hosting
+amplify publish
 ```
 
 ## Docker Configuration
@@ -232,9 +227,12 @@ jobs:
           docker build -t $ECR_REPOSITORY:latest ./backend
           docker push $ECR_REPOSITORY:latest
 
-      - name: Deploy to App Runner
+      - name: Deploy to ECS
         run: |
-          aws apprunner start-deployment --service-arn $APP_RUNNER_ARN
+          aws ecs update-service \
+            --cluster wwhd-cluster \
+            --service wwhd-service \
+            --force-new-deployment
 
   deploy-frontend:
     needs: test
@@ -250,8 +248,9 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync ./frontend/out s3://$S3_BUCKET --delete
-          aws cloudfront create-invalidation --distribution-id $CF_DISTRIBUTION --paths "/*"
+          # Frontend deployment handled by separate wwhd-frontend repository
+          # using AWS Amplify automatic deployments
+          echo "Frontend deployed via AWS Amplify in separate repository"
 ```
 
 ## Environment Configuration
@@ -268,20 +267,20 @@ OPENAI_API_KEY=${SECRETS_MANAGER:openai_key}
 MODEL_CHAT=gpt-4o-mini
 MODEL_EMBED=text-embedding-3-small
 
-# Vector Database
-QDRANT_URL=https://qdrant.wwhd.ai
-QDRANT_API_KEY=${SECRETS_MANAGER:qdrant_key}
+# Vector Database (Self-hosted)
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
 
-# Database
-DATABASE_URL=postgresql://user:pass@rds.amazonaws.com/wwhd
+# Database (SQLite on EFS)
+DATABASE_URL=sqlite:///./data/app.db
 
 # Authentication
 JWT_SECRET=${SECRETS_MANAGER:jwt_secret}
 JWT_ISSUER=wwhd
 JWT_AUDIENCE=wwhd-users
 
-# CORS
-ALLOW_ORIGINS=https://wwhd.ai,https://app.wwhd.ai
+# CORS (Amplify frontend)
+ALLOW_ORIGINS=https://wwhd.amplifyapp.com,http://localhost:3000
 ```
 
 ## Monitoring Setup
@@ -320,30 +319,30 @@ alarms:
 
 | Component | Dev | Staging | Production |
 |-----------|-----|---------|------------|
-| App Runner | 0.5 vCPU, 1GB | 1 vCPU, 2GB | 2 vCPU, 4GB |
-| Qdrant | Shared | Dedicated Small | Dedicated Medium |
-| Database | SQLite | RDS t3.small | RDS m5.large |
-| CloudFront | Disabled | Enabled | Enabled + WAF |
+| ECS Fargate | 1 vCPU, 2GB | 2 vCPU, 4GB | 4 vCPU, 8GB |
+| Qdrant (Self-hosted) | 1 vCPU, 2GB | 2 vCPU, 4GB | 4 vCPU, 8GB |
+| Database | SQLite on EFS | SQLite on EFS | SQLite on EFS |
+| Frontend | Amplify Free | Amplify | Amplify |
 
 ### Estimated Monthly Costs
 
 ```yaml
 development:
-  total: $50
+  total: $30
   breakdown:
-    app_runner: $20
-    qdrant_cloud: $20
-    s3: $5
-    other: $5
+    ecs_fargate: $20
+    amplify: $0 (free tier)
+    efs_storage: $5
+    alb: $5
 
 production:
-  total: $500
+  total: $200
   breakdown:
-    app_runner: $150  # With auto-scaling
-    qdrant_cloud: $200
-    rds: $100
-    cloudfront: $30
-    monitoring: $20
+    ecs_fargate: $150  # With auto-scaling
+    amplify: $15
+    efs_storage: $10
+    alb: $20
+    monitoring: $5
 ```
 
 ## Deployment Checklist
@@ -363,7 +362,8 @@ production:
 
 - [ ] ECR repository setup
 - [ ] Docker image build
-- [ ] App Runner deployment
+- [ ] ECS Fargate deployment
+- [ ] Amplify frontend setup (separate repo)
 - [ ] Environment variables
 - [ ] Database migrations
 - [ ] Qdrant collections setup
@@ -375,13 +375,15 @@ production:
 ## Rollback Strategy
 
 ```bash
-# App Runner rollback
-aws apprunner list-operations --service-arn $SERVICE_ARN
-aws apprunner start-deployment --service-arn $SERVICE_ARN --image-identifier $PREVIOUS_IMAGE
+# ECS Fargate rollback
+aws ecs update-service \
+  --cluster wwhd-cluster \
+  --service wwhd-service \
+  --task-definition wwhd-task:PREVIOUS_REVISION
 
-# Frontend rollback
-aws s3 sync s3://$S3_BUCKET-backup s3://$S3_BUCKET
-aws cloudfront create-invalidation --distribution-id $CF_DISTRIBUTION --paths "/*"
+# Amplify rollback (in frontend repository)
+amplify console
+# Use Amplify console to rollback to previous deployment
 ```
 
 ## Acceptance Criteria
