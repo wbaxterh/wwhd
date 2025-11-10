@@ -60,11 +60,14 @@ jobs:
 
     - name: Update task definition with environment variables
       run: |
-        # Update the task definition with environment variables from GitHub Secrets
+        # Clear existing environment variables and secrets to avoid conflicts
+        # Then set new environment variables from GitHub Secrets
         jq --arg openai_key "${{ secrets.OPENAI_API_KEY }}" \
            --arg model_chat "${{ vars.MODEL_CHAT || 'gpt-4o-mini' }}" \
            --arg model_embed "${{ vars.MODEL_EMBED || 'text-embedding-3-small' }}" \
-           '.containerDefinitions[0].environment = [
+           --arg jwt_secret "${{ secrets.JWT_SECRET || 'default-jwt-secret-change-in-production' }}" \
+           '
+           .containerDefinitions[0].environment = [
              {"name": "OPENAI_API_KEY", "value": $openai_key},
              {"name": "MODEL_CHAT", "value": $model_chat},
              {"name": "MODEL_EMBED", "value": $model_embed},
@@ -73,9 +76,11 @@ jobs:
              {"name": "DATABASE_URL", "value": "sqlite:///./data/app.db"},
              {"name": "APP_ENV", "value": "production"},
              {"name": "LOG_LEVEL", "value": "INFO"},
-             {"name": "JWT_SECRET", "value": "${{ secrets.JWT_SECRET || 'default-jwt-secret-change-in-production' }}"},
+             {"name": "JWT_SECRET", "value": $jwt_secret},
              {"name": "ALLOW_ORIGINS", "value": "*"}
-           ]' task-definition.json > updated-task-definition.json
+           ] |
+           .containerDefinitions[0].secrets = []
+           ' task-definition.json > updated-task-definition.json
         mv updated-task-definition.json task-definition.json
 
     - name: Fill in the new image ID in the Amazon ECS task definition
