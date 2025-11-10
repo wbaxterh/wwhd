@@ -20,6 +20,8 @@ const sidebars: SidebarsConfig = {
     'chat-api',
     'examples',
     'setup',
+    'troubleshooting',
+    'working-sessions',
   ],
 };
 
