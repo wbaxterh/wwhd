@@ -198,6 +198,19 @@ class OrchestratorAgent:
 
         self.graph = self._build_graph()
 
+    def _initialize_llm(self):
+        """Initialize the LLM for agent use"""
+        if settings.enable_openai:
+            return ChatOpenAI(
+                model=settings.model_chat,
+                openai_api_key=settings.openai_api_key,
+                temperature=0.7,
+                streaming=True
+            )
+        else:
+            # OpenRouter configuration would go here
+            raise ValueError("OpenRouter support not yet implemented")
+
     def _initialize_embedder(self):
         """Initialize OpenAI embeddings"""
         return OpenAIEmbeddings(
