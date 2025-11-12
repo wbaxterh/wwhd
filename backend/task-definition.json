@@ -107,16 +107,6 @@
           "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "qdrant"
         }
-      },
-      "healthCheck": {
-        "command": [
-          "CMD-SHELL",
-          "curl -f http://localhost:6333/ || exit 1"
-        ],
-        "interval": 30,
-        "timeout": 5,
-        "retries": 3,
-        "startPeriod": 60
       }
     }
   ],

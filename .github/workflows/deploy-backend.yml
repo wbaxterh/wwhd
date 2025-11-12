@@ -90,10 +90,10 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Download current task definition
+    - name: Use local task definition with fixes
       run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} \
-          --query taskDefinition > task-definition.json
+        cd backend
+        cp task-definition.json ../task-definition.json
 
     - name: Update task definition with environment variables and EFS mount
       run: |
