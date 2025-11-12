@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     qdrant_api_key: Optional[str] = Field(default=None, env="QDRANT_API_KEY")
 
     # Database - fallback to local path if /data doesn't exist
-    # Using v2 to get fresh schema with Document model updates
-    sqlite_path: str = Field(default="/data/wwhd_v2.db", env="SQLITE_PATH")
+    # Using v3 to get completely fresh schema with fixed Document model
+    sqlite_path: str = Field(default="/data/wwhd_v3.db", env="SQLITE_PATH")
 
     @property
     def database_url(self) -> str:

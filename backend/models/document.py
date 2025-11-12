@@ -9,7 +9,7 @@ class Document(Base):
     """Document model for storing knowledge base entries"""
     __tablename__ = "documents"
 
-    id = Column(String, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     namespace = Column(String, nullable=False, index=True)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
