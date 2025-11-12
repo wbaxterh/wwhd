@@ -30,7 +30,7 @@
         },
         {
           "name": "SQLITE_PATH",
-          "value": "/data/wwhd.db"
+          "value": "/data/wwhd_v3.db"
         },
         {
           "name": "LOG_LEVEL",
@@ -111,7 +111,7 @@
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "curl -f http://localhost:6333/health || exit 1"
+          "curl -f http://localhost:6333/ || exit 1"
         ],
         "interval": 30,
         "timeout": 5,
