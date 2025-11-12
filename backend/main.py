@@ -16,7 +16,7 @@ import logging
 from config import settings
 
 # Import routers
-from api import chat_router, health_router, auth_router
+from api import chat_router, health_router, auth_router, documents_router
 
 # Import database
 from models import init_db
@@ -90,6 +90,12 @@ app.include_router(
     chat_router,
     prefix=f"{settings.api_v1_prefix}",
     tags=["chat"]
+)
+
+app.include_router(
+    documents_router,
+    prefix=f"{settings.api_v1_prefix}/documents",
+    tags=["knowledge-base"]
 )
 
 
