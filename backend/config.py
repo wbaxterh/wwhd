@@ -42,14 +42,23 @@ class Settings(BaseSettings):
     qdrant_url: str = Field(default="http://localhost:6333", env="QDRANT_URL")
     qdrant_api_key: Optional[str] = Field(default=None, env="QDRANT_API_KEY")
 
-    # Database
+    # Database - fallback to local path if /data doesn't exist
     sqlite_path: str = Field(default="/data/wwhd.db", env="SQLITE_PATH")
 
     @property
     def database_url(self) -> str:
         """Generate SQLAlchemy database URL"""
+        # Fallback to local path if /data directory doesn't exist
+        import os
+        db_path = self.sqlite_path
+
+        # If /data path is specified but directory doesn't exist, fallback to local
+        if db_path.startswith('/data/') and not os.path.exists('/data'):
+            db_path = './wwhd.db'
+            print(f"Warning: /data directory not found, using fallback path: {db_path}")
+
         # Use aiosqlite for async support
-        return f"sqlite+aiosqlite:///{self.sqlite_path}"
+        return f"sqlite+aiosqlite:///{db_path}"
 
     # Authentication
     jwt_secret: str = Field(default="change-this-in-production", env="JWT_SECRET")
