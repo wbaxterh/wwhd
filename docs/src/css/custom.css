@@ -81,6 +81,7 @@
   font-weight: 900;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
+  color: var(--ifm-color-content) !important;
 }
 
 .hero__subtitle {
@@ -88,6 +89,7 @@
   font-weight: 300;
   margin-bottom: 2rem;
   opacity: 0.8;
+  color: var(--ifm-color-content-secondary) !important;
 }
 
 /* Clean button styling */
@@ -108,10 +110,24 @@
 .hero--primary {
   background: linear-gradient(135deg, var(--ifm-background-color) 0%, var(--ifm-background-surface-color) 100%);
   border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-color-content);
+}
+
+.hero--primary * {
+  color: inherit;
+}
+
+.hero--primary .hero__title {
+  color: var(--ifm-color-content) !important;
+}
+
+.hero--primary .hero__subtitle {
+  color: var(--ifm-color-content-secondary) !important;
 }
 
 [data-theme='dark'] .hero--primary {
   background: linear-gradient(135deg, #000000 0%, #111111 100%);
+  color: var(--ifm-color-content);
 }
 
 /* Feature cards styling */
