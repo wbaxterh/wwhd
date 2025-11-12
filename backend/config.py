@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     qdrant_api_key: Optional[str] = Field(default=None, env="QDRANT_API_KEY")
 
     # Database
-    sqlite_path: str = Field(default="./wwhd.db", env="SQLITE_PATH")
+    sqlite_path: str = Field(default="/data/wwhd.db", env="SQLITE_PATH")
 
     @property
     def database_url(self) -> str:
