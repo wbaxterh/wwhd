@@ -22,8 +22,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          username: 'testuser',
-          password: 'testpass123',
+          username: 'demo',
+          password: 'demo1234',
         }),
       });
 
@@ -70,7 +70,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             onClick={handleTestUser}
             disabled={isLoading}
-            className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-4 py-3 bg-white text-slate-900 rounded-md hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
           >
             {isLoading ? 'Connecting...' : 'Try Test Chat'}
           </button>

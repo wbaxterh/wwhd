@@ -39,6 +39,43 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Build and test Docker image locally
+      id: docker-test
+      run: |
+        cd backend
+        echo "🔨 Building Docker image..."
+        docker build -t test-backend:latest .
+
+        echo "🧪 Testing if container starts properly..."
+        # Run container and check if it starts without errors
+        docker run -d --name test-container \
+          -e OPENAI_API_KEY=test-key \
+          -e ENABLE_OPENAI=true \
+          -e APP_ENV=test \
+          -e JWT_SECRET=test-secret \
+          test-backend:latest
+
+        # Wait for container to initialize
+        sleep 5
+
+        # Check if container is still running
+        if [ "$(docker inspect -f '{{.State.Running}}' test-container)" != "true" ]; then
+          echo "❌ Container failed to start!"
+          docker logs test-container
+          exit 1
+        fi
+
+        # Test the health endpoint
+        docker run --rm --network container:test-container curlimages/curl:latest \
+          curl -f http://localhost:8000/api/v1/health || {
+            echo "❌ Health check failed!"
+            docker logs test-container
+            exit 1
+          }
+
+        echo "✅ Docker container tests passed!"
+        docker stop test-container && docker rm test-container
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:

@@ -15,6 +15,7 @@ function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ function ChatInterface() {
       };
 
       setMessages(prev => [...prev, assistantMessageObj]);
+      setIsStreaming(true);
 
       if (reader) {
         while (true) {
@@ -114,10 +116,11 @@ function ChatInterface() {
     }
 
     setIsLoading(false);
+    setIsStreaming(false);
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto">
+    <div className="flex flex-col max-w-4xl mx-auto" style={{ height: 'calc(100vh - 73px)' }}>
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -148,6 +151,18 @@ function ChatInterface() {
             </div>
           </div>
         ))}
+        {isLoading && !isStreaming && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg p-3 bg-muted text-muted-foreground">
+              <div className="text-sm font-medium mb-1">Herman</div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chat Input */}
@@ -174,8 +189,8 @@ function ChatInterface() {
 
 export default function ChatPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+    <div className="h-screen bg-background flex flex-col">
+      <header className="border-b border-border bg-card flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -194,7 +209,7 @@ export default function ChatPage() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 flex">
         <ChatInterface />
       </main>
     </div>
