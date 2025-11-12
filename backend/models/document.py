@@ -19,6 +19,8 @@ class Document(Base):
     chunk_count = Column(Float, default=0)
     youtube_url = Column(String)
     youtube_metadata = Column(JSON)
+    vector_id = Column(String)
+    embedding_model = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
