@@ -35,20 +35,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting W.W.H.D. API...")
 
-    # Initialize database with clean setup
+    # Initialize database
     try:
-        # Import and run the database initialization
-        from init_db import reset_and_init_db
-        await reset_and_init_db()
-        logger.info("Database initialized and seeded")
+        await init_db()
+        logger.info("Database initialized")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
-        # Fallback to basic init
-        try:
-            await init_db()
-            logger.info("Fallback database initialization completed")
-        except Exception as fallback_error:
-            logger.error(f"Fallback database initialization also failed: {fallback_error}")
 
     # Validate configuration
     try:

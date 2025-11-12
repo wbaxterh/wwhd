@@ -6,16 +6,25 @@ This ensures clean database setup on each deployment
 import asyncio
 import os
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.context import CryptContext
 
-from models import init_db, get_db, User, Document
-from config import settings
+try:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from passlib.context import CryptContext
+    from models import init_db, get_db, User, Document
+    from config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Some dependencies not available: {e}")
+    DEPENDENCIES_AVAILABLE = False
 
 async def reset_and_init_db():
     """Reset and initialize database with clean schema"""
+
+    if not DEPENDENCIES_AVAILABLE:
+        print("Dependencies not available, skipping database initialization")
+        return
 
     # Remove existing database if it exists (for clean start)
     db_path = "./wwhd.db"
