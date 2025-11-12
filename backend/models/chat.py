@@ -84,31 +84,3 @@ class Message(Base):
     user = relationship("User", back_populates="messages")
 
 
-class Document(Base):
-    """Documents stored in vector database"""
-    __tablename__ = "documents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    namespace = Column(String(100), nullable=False, index=True)  # Agent namespace
-    title = Column(String(255), nullable=False)
-    source_url = Column(String(500), nullable=True)
-    content = Column(Text, nullable=False)
-
-    # Vector storage reference
-    vector_id = Column(String(100), nullable=True)  # ID in Qdrant
-    embedding_model = Column(String(100), nullable=True)
-
-    # Metadata
-    author = Column(String(255), nullable=True)
-    published_date = Column(DateTime, nullable=True)
-    tags = Column(JSON, nullable=True)  # List of tags
-    metadata_json = Column(JSON, nullable=True)
-
-    # Tracking
-    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Statistics
-    retrieval_count = Column(Integer, default=0)
-    avg_relevance_score = Column(Float, nullable=True)
