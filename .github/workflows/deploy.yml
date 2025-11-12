@@ -1,0 +1,165 @@
+name: Deploy WWHD Backend
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+  ECS_CLUSTER: wwhd-cluster
+  ECS_SERVICE: wwhd-backend
+  ECR_REPOSITORY: wwhd
+  CONTAINER_NAME: wwhd-backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          # Add your test commands here
+          python -m py_compile main.py
+          echo "✅ Basic syntax checks passed"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get Account ID
+        id: account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd backend
+
+          # Build a docker container and push it to ECR
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+
+          echo "Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Check ECS service health before deployment
+        run: |
+          echo "🔍 Checking current ECS service status..."
+
+          # Check if service exists and is stable
+          SERVICE_STATUS=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_SERVICE \
+            --query 'services[0].status' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+
+          echo "Service status: $SERVICE_STATUS"
+
+          if [ "$SERVICE_STATUS" = "DRAINING" ]; then
+            echo "⚠️  Service is DRAINING - forcing new deployment"
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER \
+              --service $ECS_SERVICE \
+              --force-new-deployment
+
+            # Wait a bit for the force deployment to take effect
+            sleep 30
+          fi
+
+      - name: Download and update task definition
+        run: |
+          echo "📋 Downloading current task definition..."
+
+          # Get the current task definition
+          aws ecs describe-task-definition \
+            --task-definition $ECS_SERVICE \
+            --query taskDefinition > task-definition.json
+
+          # Update the image in the task definition
+          python3 -c "
+          import json
+
+          with open('task-definition.json', 'r') as f:
+              task_def = json.load(f)
+
+          # Remove fields that shouldn't be in the registration
+          for field in ['taskDefinitionArn', 'revision', 'status', 'requiresAttributes', 'placementConstraints', 'compatibilities', 'registeredAt', 'registeredBy']:
+              task_def.pop(field, None)
+
+          # Update the image
+          for container in task_def['containerDefinitions']:
+              if container['name'] == '${{ env.CONTAINER_NAME }}':
+                  container['image'] = '${{ steps.build-image.outputs.image }}'
+
+          with open('task-definition.json', 'w') as f:
+              json.dump(task_def, f, indent=2)
+          "
+
+          echo "✅ Updated task definition with new image"
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: task-definition.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Deployment completed!"
+
+          # Check final service status
+          aws ecs describe-services \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_SERVICE \
+            --query 'services[0].{
+              Status: status,
+              RunningCount: runningCount,
+              DesiredCount: desiredCount,
+              TaskDefinition: taskDefinition
+            }' \
+            --output table
+
+          echo ""
+          echo "🌐 Service should be available at: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com/"
