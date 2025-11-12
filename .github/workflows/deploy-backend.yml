@@ -95,10 +95,10 @@ jobs:
         aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} \
           --query taskDefinition > task-definition.json
 
-    - name: Update task definition with environment variables
+    - name: Update task definition with environment variables and EFS mount
       run: |
         # Clear existing environment variables and secrets to avoid conflicts
-        # Then set new environment variables from GitHub Secrets
+        # Then set new environment variables from GitHub Secrets and add EFS volume
         jq --arg openai_key "${{ secrets.OPENAI_API_KEY }}" \
            --arg model_chat "${{ vars.MODEL_CHAT || 'gpt-4o-mini' }}" \
            --arg model_embed "${{ vars.MODEL_EMBED || 'text-embedding-3-small' }}" \
@@ -116,7 +116,24 @@ jobs:
              {"name": "JWT_SECRET", "value": $jwt_secret},
              {"name": "ALLOW_ORIGINS", "value": "*"}
            ] |
-           .containerDefinitions[0].secrets = []
+           .containerDefinitions[0].secrets = [] |
+           .containerDefinitions[0].mountPoints = [
+             {
+               "sourceVolume": "database-volume",
+               "containerPath": "/data",
+               "readOnly": false
+             }
+           ] |
+           .volumes = [
+             {
+               "name": "database-volume",
+               "efsVolumeConfiguration": {
+                 "fileSystemId": "fs-0421d6926b3c7056d",
+                 "rootDirectory": "/",
+                 "transitEncryption": "ENABLED"
+               }
+             }
+           ]
            ' task-definition.json > updated-task-definition.json
         mv updated-task-definition.json task-definition.json
 

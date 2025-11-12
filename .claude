@@ -62,6 +62,15 @@ RouterAgent → LibrarianAgent → InterpreterAgent → SafetyAgent → User
    - Frontend: AWS Amplify in separate repository
    - Don't assume Terraform, App Runner, or other deployment methods
 
+## 🌐 AWS Configuration
+- **Region**: All AWS resources should be created in `us-west-2`
+- **ECS Cluster**: wwhd-cluster
+- **Backend Service**: wwhd-backend
+- **Load Balancer**: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
+- **VPC**: vpc-7b44bd03 (default VPC in us-west-2)
+- **EFS Database**: fs-0421d6926b3c7056d (persistent SQLite storage)
+- **Security Group**: sg-0a75b2c312d17f654 (ECS tasks)
+
 ## 🎯 Implementation Workflow
 
 ### For Agent Changes:
