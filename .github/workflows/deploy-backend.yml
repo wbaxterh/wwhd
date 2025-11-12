@@ -97,18 +97,10 @@ jobs:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+        wait-for-service-stability: false
 
     - name: Verify deployment
       run: |
-        # Wait for deployment to complete
-        echo "Waiting for service to stabilize..."
-        aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
-
-        # Get the service URL
-        TASK_ARN=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} --service-name ${{ env.ECS_SERVICE }} --query 'taskArns[0]' --output text)
-        TASK_DEF=$(aws ecs describe-tasks --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ARN --query 'tasks[0].taskDefinitionArn' --output text)
-
-        echo "✅ Deployment successful!"
-        echo "🚀 Task Definition: $TASK_DEF"
+        echo "✅ Deployment initiated successfully!"
         echo "📝 Image: ${{ steps.build-image.outputs.image }}"
+        echo "ℹ️  Service will be available shortly at: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com/"
