@@ -107,7 +107,7 @@ const config: Config = {
             },
             {
               label: 'Postman Collection',
-              href: '/wwhd/WWHD.postman_collection.json',
+              href: 'pathname:///WWHD.postman_collection.json',
             },
           ],
         },

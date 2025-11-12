@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
@@ -56,6 +57,7 @@ function HomepageHeader() {
 }
 
 function QuickStart() {
+  const postmanUrl = useBaseUrl('/WWHD.postman_collection.json');
   return (
     <section className={styles.quickStart}>
       <div className="container">
@@ -97,12 +99,12 @@ curl -X POST \\
             </ul>
             <div className={styles.downloadSection}>
               <Heading as="h3">Download Resources</Heading>
-              <Link
+              <a
                 className="button button--outline button--primary"
-                to="/wwhd/WWHD.postman_collection.json"
+                href={postmanUrl}
                 download>
                 📥 Postman Collection
-              </Link>
+              </a>
             </div>
           </div>
         </div>

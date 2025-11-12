@@ -232,7 +232,7 @@ For comprehensive API documentation with detailed Postman collection, see [API R
 
 ### Quick Postman Import
 
-Download the complete Postman collection: [WWHD.postman_collection.json](./WWHD.postman_collection.json)
+Download the complete Postman collection: [WWHD.postman_collection.json](pathname:///WWHD.postman_collection.json)
 
 The collection includes:
 - Automatic token management

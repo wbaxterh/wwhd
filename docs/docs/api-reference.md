@@ -363,7 +363,7 @@ console.log(response.content);
 
 Download the complete Postman collection with pre-configured requests:
 
-[Download WWHD.postman_collection.json](./WWHD.postman_collection.json)
+[Download WWHD.postman_collection.json](pathname:///WWHD.postman_collection.json)
 
 ### Import Instructions
 1. Open Postman
