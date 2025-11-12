@@ -1,0 +1,74 @@
+name: Deploy Frontend to Amplify
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Frontend
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
+
+      - name: Deploy to Amplify
+        run: |
+          # Get the Amplify app ID and branch name
+          APP_ID=$(aws amplify list-apps --query 'apps[?name==`wwhd-frontend`].appId' --output text)
+          if [ -z "$APP_ID" ]; then
+            echo "Creating new Amplify app..."
+            APP_ID=$(aws amplify create-app \
+              --name wwhd-frontend \
+              --description "W.W.H.D. Frontend Application" \
+              --repository https://github.com/wbaxterh/wwhd \
+              --access-token ${{ secrets.GITHUB_TOKEN }} \
+              --query 'app.appId' \
+              --output text)
+
+            # Create master branch
+            aws amplify create-branch \
+              --app-id $APP_ID \
+              --branch-name master \
+              --description "Production branch"
+          fi
+
+          echo "Triggering deployment for app: $APP_ID"
+          aws amplify start-deployment \
+            --app-id $APP_ID \
+            --branch-name master
