@@ -102,6 +102,32 @@
   transition: all 0.2s ease;
 }
 
+.button--primary {
+  background-color: var(--ifm-color-primary) !important;
+  border-color: var(--ifm-color-primary) !important;
+  color: var(--ifm-background-color) !important;
+}
+
+.button--secondary {
+  background-color: transparent !important;
+  border-color: var(--ifm-color-primary) !important;
+  color: var(--ifm-color-primary) !important;
+}
+
+.button--primary:hover {
+  background-color: var(--ifm-color-primary-dark) !important;
+  border-color: var(--ifm-color-primary-dark) !important;
+  color: var(--ifm-background-color) !important;
+  transform: translateY(-1px);
+}
+
+.button--secondary:hover {
+  background-color: var(--ifm-color-primary) !important;
+  border-color: var(--ifm-color-primary) !important;
+  color: var(--ifm-background-color) !important;
+  transform: translateY(-1px);
+}
+
 .button:hover {
   transform: translateY(-1px);
 }

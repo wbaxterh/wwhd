@@ -29,27 +29,9 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/api-reference"
-            style={{marginLeft: '1rem'}}>
+            to="/docs/api-reference">
             API Documentation
           </Link>
-        </div>
-        <div className={styles.quickStats}>
-          <div className={styles.stat}>
-            <strong>Live API</strong>
-            <br />
-            <small>Production Ready</small>
-          </div>
-          <div className={styles.stat}>
-            <strong>Multi-Agent</strong>
-            <br />
-            <small>Intelligent Routing</small>
-          </div>
-          <div className={styles.stat}>
-            <strong>OpenAI Powered</strong>
-            <br />
-            <small>GPT-4 Integration</small>
-          </div>
         </div>
       </div>
     </header>
