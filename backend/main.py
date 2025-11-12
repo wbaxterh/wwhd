@@ -88,7 +88,7 @@ app.include_router(
 
 app.include_router(
     chat_router,
-    prefix=f"{settings.api_v1_prefix}/chat",
+    prefix=f"{settings.api_v1_prefix}",
     tags=["chat"]
 )
 

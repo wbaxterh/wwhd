@@ -170,16 +170,49 @@ async def create_message_stream(
             db.add(user_message)
             await db.commit()
 
-            # Stream tokens as they come
-            # TODO: Implement actual streaming from LangChain
-            # For now, simulate streaming
-            response_content = "This is a simulated streaming response. "
-            response_content += "In production, this would stream tokens from the LLM."
+            # Get chat history
+            result = await db.execute(
+                select(Message).where(Message.chat_id == chat.id).order_by(Message.created_at)
+            )
+            messages = result.scalars().all()
 
-            for token in response_content.split():
-                yield f"data: {json.dumps({'type': 'token', 'content': token + ' '})}\n\n"
-                # Small delay to simulate streaming
-                await asyncio.sleep(0.05)
+            # Convert to LangChain messages (excluding the current user message)
+            chat_history = []
+            for msg in messages[:-1]:  # Exclude the current message
+                if msg.role == "user":
+                    chat_history.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    chat_history.append(AIMessage(content=msg.content))
+
+            # Stream tokens from orchestrator
+            full_response = ""
+            agents_used = []
+            sources = []
+
+            async for chunk in orchestrator.stream_process(
+                query=message_data.content,
+                chat_history=chat_history
+            ):
+                if chunk.get("type") == "token":
+                    token = chunk.get("content", "")
+                    full_response += token
+                    yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+                elif chunk.get("type") == "agents_used":
+                    agents_used = chunk.get("agents", [])
+                elif chunk.get("type") == "sources":
+                    sources = chunk.get("sources", [])
+
+            # Save the complete response to database
+            assistant_message = Message(
+                chat_id=chat.id,
+                user_id=current_user.id,
+                role="assistant",
+                content=full_response,
+                agent_used=", ".join(agents_used),
+                sources_json=json.dumps(sources) if sources else None
+            )
+            db.add(assistant_message)
+            await db.commit()
 
             # Send completion
             yield f"data: {json.dumps({'type': 'done'})}\n\n"

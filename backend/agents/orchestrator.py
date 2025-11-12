@@ -399,3 +399,107 @@ class OrchestratorAgent:
                 "agents_used": [],
                 "sources": []
             }
+
+    async def stream_process(
+        self,
+        query: str,
+        chat_history: Optional[List[BaseMessage]] = None
+    ):
+        """
+        Streaming version of process method that yields tokens as they are generated
+        """
+        # Initialize state following AGENTS.md specification
+        initial_state = {
+            "user_id": "system",
+            "session_id": "system",
+            "message_id": "system",
+            "user_message": query,
+            "timestamp": datetime.now(),
+
+            # Routing
+            "intent": None,
+            "confidence": 0.0,
+            "selected_namespaces": [],
+            "selected_agents": [],
+
+            # RAG context
+            "retrieved_chunks": [],
+            "reranked_chunks": None,
+
+            # Generation
+            "system_prompt": "",
+            "safety_flags": [],
+            "response_tokens": [],
+            "final_response": "",
+            "citations": [],
+
+            # Accounting
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "embedding_tokens": 0,
+            "total_cost": 0.0,
+
+            # Control flow
+            "current_node": "",
+            "next_node": None,
+            "error": None,
+            "status": "processing"
+        }
+
+        try:
+            # Run through router and librarian first (non-streaming)
+            # Router phase
+            state = await self.router_agent.route(initial_state)
+            yield {"type": "agents_used", "agents": state["selected_namespaces"]}
+
+            # Librarian phase (if needed)
+            if state.get("next_node") == "librarian":
+                state = await self._librarian_node(state)
+                if state["retrieved_chunks"]:
+                    yield {"type": "sources", "sources": state["citations"]}
+
+            # Interpreter phase (with streaming)
+            if self.interpreter_agent:
+                # Use streaming LLM for the interpreter
+                prompt = self._build_interpreter_prompt(state)
+
+                async for chunk in self.llm.astream(prompt):
+                    if hasattr(chunk, 'content') and chunk.content:
+                        yield {"type": "token", "content": chunk.content}
+                        state["final_response"] += chunk.content
+            else:
+                # Fallback without streaming
+                prompt = f"Please provide wisdom about: {state['user_message']}"
+                response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+
+                # Simulate streaming for fallback
+                for word in response.content.split():
+                    yield {"type": "token", "content": word + " "}
+
+                state["final_response"] = response.content
+
+            # Safety phase (non-streaming)
+            state = await self._safety_node(state)
+
+        except Exception as e:
+            logger.error(f"Error in streaming orchestrator: {e}")
+            yield {"type": "token", "content": "I apologize, but I encountered an error. Please try again."}
+
+    def _build_interpreter_prompt(self, state: ConversationState) -> List[BaseMessage]:
+        """Build prompt for interpreter with context from librarian"""
+        system_prompt = """You are Herman, a wise AI companion inspired by ancient Shaolin philosophy.
+        You combine timeless wisdom with modern insights to help people navigate life's challenges.
+        Speak with compassion, depth, and practical wisdom. Keep responses meaningful but concise."""
+
+        context = ""
+        if state["retrieved_chunks"]:
+            context = "\n\nRelevant knowledge:\n"
+            for chunk in state["retrieved_chunks"][:3]:  # Limit context
+                context += f"- {chunk.get('text', '')}\n"
+
+        user_prompt = f"{state['user_message']}{context}"
+
+        return [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
