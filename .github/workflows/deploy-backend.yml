@@ -67,7 +67,7 @@ jobs:
 
         # Test the health endpoint
         docker run --rm --network container:test-container curlimages/curl:latest \
-          curl -f http://localhost:8000/api/v1/health || {
+          curl -f http://localhost:8000/health || {
             echo "❌ Health check failed!"
             docker logs test-container
             exit 1
