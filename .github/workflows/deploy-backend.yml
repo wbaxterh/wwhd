@@ -116,24 +116,7 @@ jobs:
              {"name": "JWT_SECRET", "value": $jwt_secret},
              {"name": "ALLOW_ORIGINS", "value": "*"}
            ] |
-           .containerDefinitions[0].secrets = [] |
-           .containerDefinitions[0].mountPoints = [
-             {
-               "sourceVolume": "database-volume",
-               "containerPath": "/data",
-               "readOnly": false
-             }
-           ] |
-           .volumes = [
-             {
-               "name": "database-volume",
-               "efsVolumeConfiguration": {
-                 "fileSystemId": "fs-0421d6926b3c7056d",
-                 "rootDirectory": "/",
-                 "transitEncryption": "ENABLED"
-               }
-             }
-           ]
+           .containerDefinitions[0].secrets = []
            ' task-definition.json > updated-task-definition.json
         mv updated-task-definition.json task-definition.json
 
