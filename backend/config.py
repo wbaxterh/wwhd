@@ -56,6 +56,14 @@ class Settings(BaseSettings):
         if db_path.startswith('/data/') and not os.path.exists('/data'):
             db_path = './wwhd.db'
             print(f"Warning: /data directory not found, using fallback path: {db_path}")
+        else:
+            print(f"Using database path: {db_path}")
+
+        # Ensure parent directory exists
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"Created database directory: {db_dir}")
 
         # Use aiosqlite for async support
         return f"sqlite+aiosqlite:///{db_path}"
