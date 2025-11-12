@@ -226,101 +226,20 @@ curl -X POST http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com/api/v1/chat/
 }
 ```
 
-## Postman Collection
+## Complete API Documentation
 
-Import this into Postman for easy testing:
+For comprehensive API documentation with detailed Postman collection, see [API Reference](./api-reference).
 
-```json
-{
-  "info": {
-    "name": "W.W.H.D. API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Register User",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Content-Type", "value": "application/json"}
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"{{username}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{name}}\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/api/v1/auth/register",
-          "host": ["{{base_url}}"]
-        }
-      }
-    },
-    {
-      "name": "Get Token",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
-        ],
-        "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {"key": "username", "value": "{{username}}"},
-            {"key": "password", "value": "{{password}}"}
-          ]
-        },
-        "url": {
-          "raw": "{{base_url}}/api/v1/auth/token",
-          "host": ["{{base_url}}"]
-        }
-      }
-    },
-    {
-      "name": "Send Message",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Content-Type", "value": "application/json"},
-          {"key": "Authorization", "value": "Bearer {{token}}"}
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"content\": \"What advice would Herman give about finding balance in life?\",\n  \"chat_id\": null\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/api/v1/chat/chat",
-          "host": ["{{base_url}}"]
-        }
-      }
-    }
-  ],
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com"
-    },
-    {
-      "key": "username",
-      "value": "test_user"
-    },
-    {
-      "key": "email",
-      "value": "test@example.com"
-    },
-    {
-      "key": "password",
-      "value": "SecurePass123!"
-    },
-    {
-      "key": "name",
-      "value": "Test User"
-    },
-    {
-      "key": "token",
-      "value": "your-jwt-token-here"
-    }
-  ]
-}
-```
+### Quick Postman Import
+
+Download the complete Postman collection: [WWHD.postman_collection.json](./WWHD.postman_collection.json)
+
+The collection includes:
+- Automatic token management
+- Pre-configured test scenarios
+- Example requests for all endpoints
+- Environment variables setup
+- Complete workflow testing
 
 ## JavaScript/TypeScript Client
 

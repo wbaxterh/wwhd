@@ -18,6 +18,7 @@ const sidebars: SidebarsConfig = {
     'intro',
     'authentication',
     'chat-api',
+    'api-reference',
     'examples',
     'setup',
     'troubleshooting',

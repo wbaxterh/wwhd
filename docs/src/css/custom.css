@@ -1,30 +1,176 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * W.W.H.D. Custom Styles
+ * Monochromatic white theme with clean typography
  */
 
-/* You can override the default Infima variables here. */
+/* Light theme - Monochromatic White */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-color-primary: #000000;
+  --ifm-color-primary-dark: #000000;
+  --ifm-color-primary-darker: #000000;
+  --ifm-color-primary-darkest: #000000;
+  --ifm-color-primary-light: #333333;
+  --ifm-color-primary-lighter: #666666;
+  --ifm-color-primary-lightest: #999999;
+
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-color-content: #000000;
+  --ifm-color-content-secondary: #333333;
+
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-navbar-color: #000000;
+  --ifm-navbar-link-color: #000000;
+  --ifm-navbar-link-hover-color: #333333;
+
+  --ifm-footer-background-color: #f8f9fa;
+  --ifm-footer-color: #000000;
+  --ifm-footer-link-color: #000000;
+  --ifm-footer-link-hover-color: #333333;
+
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.05);
+
+  --ifm-button-color: #ffffff;
+  --ifm-button-background-color: #000000;
+  --ifm-button-border-color: #000000;
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* Dark theme - Monochromatic Black */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #ffffff;
+  --ifm-color-primary-dark: #ffffff;
+  --ifm-color-primary-darker: #ffffff;
+  --ifm-color-primary-darkest: #ffffff;
+  --ifm-color-primary-light: #cccccc;
+  --ifm-color-primary-lighter: #999999;
+  --ifm-color-primary-lightest: #666666;
+
+  --ifm-background-color: #000000;
+  --ifm-background-surface-color: #111111;
+  --ifm-color-content: #ffffff;
+  --ifm-color-content-secondary: #cccccc;
+
+  --ifm-navbar-background-color: #000000;
+  --ifm-navbar-color: #ffffff;
+  --ifm-navbar-link-color: #ffffff;
+  --ifm-navbar-link-hover-color: #cccccc;
+
+  --ifm-footer-background-color: #111111;
+  --ifm-footer-color: #ffffff;
+  --ifm-footer-link-color: #ffffff;
+  --ifm-footer-link-hover-color: #cccccc;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
+
+  --ifm-button-color: #000000;
+  --ifm-button-background-color: #ffffff;
+  --ifm-button-border-color: #ffffff;
+}
+
+/* Custom WWHD styling */
+.navbar__title {
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.hero__title {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.hero__subtitle {
+  font-size: 1.2rem;
+  font-weight: 300;
+  margin-bottom: 2rem;
+  opacity: 0.8;
+}
+
+/* Clean button styling */
+.button {
+  border-radius: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 2px solid;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+/* Hero section styling */
+.hero--primary {
+  background: linear-gradient(135deg, var(--ifm-background-color) 0%, var(--ifm-background-surface-color) 100%);
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+[data-theme='dark'] .hero--primary {
+  background: linear-gradient(135deg, #000000 0%, #111111 100%);
+}
+
+/* Feature cards styling */
+.feature-card {
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 0;
+  padding: 2rem;
+  height: 100%;
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ifm-color-primary);
+}
+
+/* Code block styling */
+.theme-code-block {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 0;
+}
+
+/* Documentation content */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-weight: 700;
+}
+
+.markdown h1 {
+  border-bottom: 2px solid var(--ifm-color-primary);
+  padding-bottom: 0.5rem;
+}
+
+/* API endpoint styling */
+.api-endpoint {
+  background: var(--ifm-background-surface-color);
+  border-left: 4px solid var(--ifm-color-primary);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+/* Status indicators */
+.status-healthy {
+  color: #28a745;
+}
+
+[data-theme='dark'] .status-healthy {
+  color: #4caf50;
+}
+
+.status-error {
+  color: #dc3545;
+}
+
+[data-theme='dark'] .status-error {
+  color: #f44336;
 }
