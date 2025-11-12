@@ -21,6 +21,9 @@ class Document(Base):
     youtube_metadata = Column(JSON)
     vector_id = Column(String)
     embedding_model = Column(String)
+    uploaded_by = Column(Integer, ForeignKey("users.id"))
+    metadata_json = Column(JSON)
+    source_url = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

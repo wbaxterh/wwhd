@@ -87,7 +87,7 @@ function KnowledgeBaseInterface() {
 
   const loadNamespaces = async () => {
     try {
-      const response = await fetch('/api/v1/documents/namespaces', {
+      const response = await fetch('/api/knowledgebase/namespaces', {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
@@ -110,7 +110,7 @@ function KnowledgeBaseInterface() {
         params.append('namespace', selectedNamespace);
       }
 
-      const response = await fetch(`/api/v1/documents?${params}`, {
+      const response = await fetch(`/api/knowledgebase/documents?${params}`, {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
@@ -183,7 +183,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/v1/documents/upload', {
+      const response = await fetch('/api/knowledgebase/upload', {
         method: 'POST',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -225,7 +225,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/v1/documents', {
+      const response = await fetch('/api/knowledgebase/documents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +259,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/v1/documents/${editingDocument.id}`, {
+      const response = await fetch(`/api/knowledgebase/documents/${editingDocument.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -294,7 +294,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/v1/documents/${documentId}`, {
+      const response = await fetch(`/api/knowledgebase/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
