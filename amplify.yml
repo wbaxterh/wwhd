@@ -8,6 +8,8 @@ frontend:
     build:
       commands:
         - npm run build
+      env:
+        - NEXT_PUBLIC_API_URL=http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
   artifacts:
     baseDirectory: frontend/out
     files:

@@ -43,14 +43,15 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage]
+          content: input
         }),
       });
 
@@ -87,17 +88,19 @@ function ChatInterface() {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
-              if (data === '[DONE]') continue;
+              if (data === '') continue;
 
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.choices?.[0]?.delta?.content) {
-                  assistantMessage += parsed.choices[0].delta.content;
+                if (parsed.type === 'token' && parsed.content) {
+                  assistantMessage += parsed.content;
                   setMessages(prev => prev.map(msg =>
                     msg.id === assistantMessageObj.id
                       ? { ...msg, content: assistantMessage }
                       : msg
                   ));
+                } else if (parsed.type === 'done') {
+                  break;
                 }
               } catch (e) {
                 // Skip invalid JSON
