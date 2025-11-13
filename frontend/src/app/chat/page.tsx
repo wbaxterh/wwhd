@@ -3,11 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { AuthModal } from '@/components/AuthModal';
+import { Markdown } from '@assistant-ui/react-markdown';
+
+interface Citation {
+  title: string;
+  url: string;
+  timestamp?: string;
+}
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  citations?: Citation[];
 }
 
 function ChatInterface() {
@@ -67,11 +75,13 @@ function ChatInterface() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = '';
+      let citations: Citation[] = [];
 
       const assistantMessageObj: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: ''
+        content: '',
+        citations: []
       };
 
       setMessages(prev => [...prev, assistantMessageObj]);
@@ -97,6 +107,13 @@ function ChatInterface() {
                   setMessages(prev => prev.map(msg =>
                     msg.id === assistantMessageObj.id
                       ? { ...msg, content: assistantMessage }
+                      : msg
+                  ));
+                } else if (parsed.type === 'citation' && parsed.citations) {
+                  citations = parsed.citations;
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === assistantMessageObj.id
+                      ? { ...msg, citations: citations }
                       : msg
                   ));
                 } else if (parsed.type === 'done') {
@@ -150,7 +167,42 @@ function ChatInterface() {
               <div className="text-sm font-medium mb-1">
                 {message.role === 'user' ? 'You' : 'Herman'}
               </div>
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              {message.role === 'assistant' ? (
+                <>
+                  <div className="prose prose-sm max-w-none">
+                    <Markdown>{message.content}</Markdown>
+                  </div>
+                  {message.citations && message.citations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border/30">
+                      <div className="text-xs font-medium mb-2 text-muted-foreground">Sources:</div>
+                      <div className="space-y-1">
+                        {message.citations.map((citation, index) => (
+                          <div key={index} className="text-xs">
+                            <span className="font-medium">{index + 1}. </span>
+                            {citation.url ? (
+                              <a
+                                href={citation.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {citation.title}
+                              </a>
+                            ) : (
+                              <span>{citation.title}</span>
+                            )}
+                            {citation.timestamp && (
+                              <span className="text-muted-foreground"> (@{citation.timestamp})</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              )}
             </div>
           </div>
         ))}

@@ -147,6 +147,9 @@ class LibrarianAgent:
                     }
                 }
 
+                # Format citation for API response
+                chunk["citation"] = self._format_citation(chunk["metadata"])
+
                 # Only include chunks with actual content
                 if chunk["text"].strip():
                     formatted.append(chunk)
@@ -156,6 +159,14 @@ class LibrarianAgent:
                 continue
 
         return formatted
+
+    def _format_citation(self, metadata: Dict) -> Dict:
+        """Format citation according to API spec and PROMPTS.md"""
+        return {
+            "title": metadata.get("source_title", "Unknown Source"),
+            "url": metadata.get("source_url", ""),
+            "timestamp": metadata.get("timestamp", "")
+        }
 
     def get_retrieval_stats(self, chunks: List[Dict]) -> Dict:
         """Get statistics about retrieved chunks"""

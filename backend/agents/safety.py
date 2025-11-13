@@ -28,11 +28,12 @@ class SafetyAgent:
             "enforce_respectful_tone": True
         }
 
-        # Disclaimer templates from AGENTS.md
+        # Disclaimer templates from PROMPTS.md specification
         self.disclaimers = {
-            "medical": "Note: This is not medical advice. Please consult healthcare professionals for medical concerns.",
-            "financial": "Note: This is educational content only, not financial advice. Consult qualified advisors for financial decisions.",
-            "legal": "Note: This is general information, not legal advice. Consult an attorney for legal matters."
+            "medical": "📝 Note: This information is based on Traditional Chinese Medicine principles and general wellness practices. It is not intended as medical advice. Always consult with qualified healthcare professionals for medical conditions or before making significant changes to your health regimen.",
+            "financial": "📝 Note: This content discusses general financial principles and strategies. It is not personalized financial advice. Investment carries risks, and you should consult with qualified financial advisors before making investment decisions.",
+            "legal": "📝 Note: This information is for educational purposes only and does not constitute legal advice. For legal matters, please consult with a qualified attorney who can address your specific situation.",
+            "exercise": "📝 Note: These exercises and physical practices should be approached gradually and with proper form. Consider your current fitness level and any health conditions. Consult with healthcare providers before beginning new exercise programs, especially if you have pre-existing conditions."
         }
 
         # Keywords that trigger safety checks
@@ -50,6 +51,11 @@ class SafetyAgent:
             "legal": [
                 "legal advice", "lawsuit", "contract", "law", "legal", "attorney", "lawyer",
                 "court", "judge", "sue", "rights", "violation", "illegal", "criminal"
+            ],
+            "exercise": [
+                "exercise", "workout", "training", "martial arts", "shaolin", "kung fu",
+                "physical practice", "movement", "stretching", "qi gong", "meditation",
+                "breathing", "posture", "form", "routine", "practice"
             ],
             "harmful": [
                 "suicide", "self-harm", "kill", "die", "death", "violence", "abuse",
@@ -182,6 +188,20 @@ class SafetyAgent:
             if is_giving_advice:
                 violations["needs_disclaimer"] = True
                 violations["type"] = "legal"
+
+        # Check for exercise/physical advice
+        exercise_keywords_found = []
+        for keyword in self.safety_keywords["exercise"]:
+            if keyword in response_lower:
+                exercise_keywords_found.append(keyword)
+
+        if exercise_keywords_found:
+            advice_indicators = ["you should do", "practice", "try this", "start with"]
+            is_giving_advice = any(indicator in response_lower for indicator in advice_indicators)
+
+            if is_giving_advice:
+                violations["needs_disclaimer"] = True
+                violations["type"] = "exercise"
 
         # Check tone if enabled
         if self.safety_rules["enforce_respectful_tone"]:

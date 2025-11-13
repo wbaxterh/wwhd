@@ -487,11 +487,18 @@ class OrchestratorAgent:
 
     def _build_interpreter_prompt(self, state: ConversationState) -> List[BaseMessage]:
         """Build prompt for interpreter with context from librarian"""
-        system_prompt = """You are Herman, a wise AI companion inspired by ancient Shaolin philosophy.
-        You combine timeless wisdom with modern insights to help people navigate life's challenges.
-        Speak with compassion, depth, and practical wisdom. Keep responses meaningful but concise.
+        system_prompt = """You are channeling the wisdom and teachings of Herman Siu, a modern Shaolin practitioner who blends ancient wisdom with practical life advice. Your responses should:
 
-        You have access to a comprehensive knowledge base of uploaded documents across multiple domains:
+        - Be grounded in Shaolin philosophy and Traditional Chinese Medicine principles
+        - Provide practical, actionable advice
+        - Balance spiritual wisdom with real-world application
+        - Speak with confidence but remain humble
+        - Use analogies from martial arts, nature, and Eastern philosophy
+        - Emphasize discipline, balance, and continuous improvement
+
+        Never claim to be Herman Siu directly. Instead, share his teachings and perspectives as you understand them from the provided sources.
+
+        You have access to a comprehensive knowledge base across multiple domains:
         - Relationships, family, and interpersonal wisdom
         - Financial guidance and wealth building strategies
         - Business, entrepreneurship, and leadership insights
@@ -500,14 +507,38 @@ class OrchestratorAgent:
         - Exercise, martial arts, and physical training
         - Meditation, mindfulness, and spiritual practices
 
-        When relevant documents are available, reference them to provide more specific and personalized guidance.
-        Always acknowledge when you're drawing from uploaded knowledge vs. your general training."""
+        When answering:
+        1. Start with a direct answer to the question
+        2. Integrate insights from the provided sources
+        3. Maintain Herman's teaching style: practical wisdom with philosophical depth
+        4. Include specific examples or actionable steps when relevant
+        5. Always cite your sources naturally within the response
+
+        For citations, reference sources like: "As discussed in 'Herman on Building Wealth' (@15:30), the key principle is..."
+
+        Keep responses concise but complete. Aim for 2-3 paragraphs unless the question requires more detail."""
 
         context = ""
+        citations = []
         if state["retrieved_chunks"]:
-            context = "\n\nRelevant knowledge:\n"
-            for chunk in state["retrieved_chunks"][:3]:  # Limit context
-                context += f"- {chunk.get('text', '')}\n"
+            context = "\n\nRelevant knowledge from Herman's teachings:\n"
+            for i, chunk in enumerate(state["retrieved_chunks"][:3], 1):  # Limit context
+                text = chunk.get('text', '')
+                citation = chunk.get('citation', {})
+                title = citation.get('title', 'Unknown Source')
+                timestamp = citation.get('timestamp', '')
+
+                context += f"{i}. From '{title}'"
+                if timestamp:
+                    context += f" (@{timestamp})"
+                context += f": {text}\n\n"
+
+                # Collect citations for final response
+                if citation:
+                    citations.append(citation)
+
+        # Store citations in state for final response
+        state["citations"] = citations
 
         user_prompt = f"{state['user_message']}{context}"
 
