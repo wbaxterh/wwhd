@@ -1,13 +1,16 @@
 import { NextRequest } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authHeader = request.headers.get('authorization');
   const body = await request.json();
+  const { id } = await params;
 
-  const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/documents/${params.id}`, {
+  const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/documents/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -28,11 +31,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authHeader = request.headers.get('authorization');
+  const { id } = await params;
 
-  const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/documents/${params.id}`, {
+  const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/documents/${id}`, {
     method: 'DELETE',
     headers: {
       ...(authHeader && { 'Authorization': authHeader }),
