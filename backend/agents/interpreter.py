@@ -136,11 +136,11 @@ Please provide your wisdom and guidance on this question, drawing from the conte
         for chunk in chunks:
             meta = chunk["metadata"]
 
-            # Only include citations with valid source information
-            if meta.get("source_title") and meta.get("source_url"):
+            # Include citations with source title (URL is optional)
+            if meta.get("source_title"):
                 citation = {
                     "title": meta["source_title"],
-                    "url": meta["source_url"],
+                    "url": meta.get("source_url", ""),
                     "timestamp": meta.get("timestamp", "")
                 }
 
