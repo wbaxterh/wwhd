@@ -3,7 +3,7 @@ Orchestrator Agent using LangGraph
 Routes queries to appropriate specialist agents
 """
 from typing import List, Dict, Any, Optional, TypedDict, Literal
-from langchain.schema import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate

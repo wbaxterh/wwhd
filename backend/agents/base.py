@@ -1,7 +1,7 @@
 """Base agent class for all specialist agents"""
 from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
-from langchain.schema import BaseMessage
+from langchain_core.messages import BaseMessage
 from langchain.tools import BaseTool
 from rag.retriever import QdrantRetriever
 from config import settings

@@ -3,7 +3,7 @@ SafetyAgent implementation from AGENTS.md specification
 Applies safety guardrails and ensures appropriate responses
 """
 from typing import List, Dict, Any, Optional
-from langchain.schema import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 import logging
 import re

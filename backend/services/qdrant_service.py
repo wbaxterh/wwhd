@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from langchain_qdrant import QdrantVectorStore
 from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document as LangChainDocument
+from langchain_core.documents import Document as LangChainDocument
 from qdrant_client import QdrantClient
 from config import settings
 import logging

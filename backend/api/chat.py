@@ -15,7 +15,7 @@ from schemas.chat import (
 )
 from api.auth import get_current_user
 from agents.orchestrator import OrchestratorAgent
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from config import settings
 
 router = APIRouter()

@@ -3,7 +3,7 @@ InterpreterAgent implementation from AGENTS.md specification
 Synthesizes retrieved context into a coherent answer in Herman's voice
 """
 from typing import List, Dict, Any, Optional
-from langchain.schema import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 import logging
 
