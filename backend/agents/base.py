@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
 from langchain_core.messages import BaseMessage
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from rag.retriever import QdrantRetriever
 from config import settings
 import logging
