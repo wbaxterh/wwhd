@@ -21,8 +21,15 @@ from config import settings
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Initialize orchestrator (singleton)
-orchestrator = OrchestratorAgent()
+# Initialize orchestrator lazily to avoid startup issues
+orchestrator = None
+
+def get_orchestrator():
+    """Get or create orchestrator instance"""
+    global orchestrator
+    if orchestrator is None:
+        orchestrator = OrchestratorAgent()
+    return orchestrator
 
 
 @router.post("/chat", response_model=MessageResponse)
@@ -84,7 +91,7 @@ async def create_message(
 
     try:
         # Process with orchestrator
-        response = await orchestrator.process(
+        response = await get_orchestrator().process(
             query=message_data.content,
             chat_history=chat_history
         )
@@ -189,7 +196,7 @@ async def create_message_stream(
             agents_used = []
             sources = []
 
-            async for chunk in orchestrator.stream_process(
+            async for chunk in get_orchestrator().stream_process(
                 query=message_data.content,
                 chat_history=chat_history
             ):
