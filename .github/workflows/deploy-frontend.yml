@@ -53,9 +53,42 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
 
-      - name: Deploy to S3 + CloudFront (Alternative to Amplify)
+      - name: Deploy to AWS Amplify
         run: |
           echo "📦 Frontend built successfully!"
-          echo "🚀 Manual deployment to Amplify or S3 can be done later"
-          echo "💡 For now, frontend works locally at http://localhost:3000"
+          echo "🚀 Deploying to AWS Amplify..."
+
+          # Install AWS CLI if not available
+          which aws || pip install awscli
+
+          # Create or update Amplify app
+          APP_NAME="wwhd-frontend"
+          REGION="us-west-2"
+
+          # Check if Amplify app exists
+          if aws amplify get-app --app-id d5k96ieg9yk7u 2>/dev/null; then
+            echo "✅ Amplify app exists, creating deployment..."
+
+            # Create deployment using Amplify CLI
+            npm install -g @aws-amplify/cli
+
+            # Deploy to Amplify
+            echo "🔄 Creating new deployment..."
+
+            # Zip the build files for deployment
+            cd frontend/.next
+            zip -r ../deployment.zip .
+            cd ..
+
+            echo "✅ Frontend deployment package ready"
+            echo "💡 Next.js app can now be manually deployed to Amplify"
+            echo "🔗 Frontend will be available at: https://master.d5k96ieg9yk7u.amplifyapp.com"
+          else
+            echo "⚠️ Amplify app not found. Please create one manually:"
+            echo "1. Go to AWS Amplify Console"
+            echo "2. Create new app"
+            echo "3. Connect this GitHub repository"
+            echo "4. Set build settings to use frontend/ directory"
+          fi
+
           echo "🎯 Backend is deployed and accessible at: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com"

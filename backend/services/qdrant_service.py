@@ -1,12 +1,12 @@
 """Qdrant vector database service for document storage and retrieval"""
 from typing import List, Dict, Any, Optional
+from langchain_qdrant import QdrantVectorStore
+from langchain_openai import OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document as LangChainDocument
 from qdrant_client import QdrantClient
-from qdrant_client.http import models
-from qdrant_client.http.models import Distance, VectorParams
-import openai
 from config import settings
 import logging
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -20,65 +20,25 @@ class QdrantService:
             api_key=settings.qdrant_api_key,
             timeout=60
         )
-        self.openai_client = openai.AsyncOpenAI(
-            api_key=settings.openai_api_key
+        self.embeddings = OpenAIEmbeddings(
+            model=settings.model_embed,
+            openai_api_key=settings.openai_api_key
+        )
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            length_function=len,
         )
 
-    async def ensure_collection_exists(self, namespace: str) -> None:
-        """Ensure a collection exists for the given namespace"""
+    def _get_vector_store(self, namespace: str) -> QdrantVectorStore:
+        """Get or create a QdrantVectorStore for the given namespace"""
         collection_name = f"documents_{namespace}"
 
-        try:
-            # Check if collection exists
-            collections = self.client.get_collections().collections
-            existing_names = [col.name for col in collections]
-
-            if collection_name not in existing_names:
-                # Create collection with OpenAI embedding dimensions
-                self.client.create_collection(
-                    collection_name=collection_name,
-                    vectors_config=VectorParams(
-                        size=1536,  # OpenAI text-embedding-3-small dimensions
-                        distance=Distance.COSINE
-                    )
-                )
-                logger.info(f"Created Qdrant collection: {collection_name}")
-
-        except Exception as e:
-            logger.error(f"Failed to ensure collection {collection_name}: {e}")
-            raise
-
-    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Get embeddings for text using OpenAI"""
-        try:
-            response = await self.openai_client.embeddings.create(
-                input=texts,
-                model=settings.model_embed
-            )
-            return [embedding.embedding for embedding in response.data]
-        except Exception as e:
-            logger.error(f"Failed to get embeddings: {e}")
-            raise
-
-    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-        """Split text into overlapping chunks"""
-        if not text:
-            return []
-
-        words = text.split()
-        if len(words) <= chunk_size:
-            return [text]
-
-        chunks = []
-        for i in range(0, len(words), chunk_size - overlap):
-            chunk_words = words[i:i + chunk_size]
-            chunk_text = ' '.join(chunk_words)
-            chunks.append(chunk_text)
-
-            if i + chunk_size >= len(words):
-                break
-
-        return chunks
+        return QdrantVectorStore(
+            client=self.client,
+            collection_name=collection_name,
+            embeddings=self.embeddings,
+        )
 
     async def add_document(
         self,
@@ -90,75 +50,40 @@ class QdrantService:
         """Add a document to the vector database"""
 
         try:
-            await self.ensure_collection_exists(namespace)
-            collection_name = f"documents_{namespace}"
+            # Get the vector store for this namespace
+            vector_store = self._get_vector_store(namespace)
 
-            # Chunk the content
-            chunks = self.chunk_text(
-                content,
-                chunk_size=settings.chunk_size,
-                overlap=settings.chunk_overlap
-            )
+            # Split the content into chunks
+            chunks = self.text_splitter.split_text(content)
 
             if not chunks:
                 raise ValueError("No content to process")
 
-            # Get embeddings for chunks
-            embeddings = await self.get_embeddings(chunks)
+            # Prepare document metadata for all chunks
+            doc_metadata = {
+                "document_id": str(document_id),
+                "namespace": str(namespace),
+                **{str(k): str(v) for k, v in metadata.items()}  # Ensure all values are strings
+            }
 
-            # Prepare points for Qdrant
-            points = []
-            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-                # Use string point ID for Qdrant compatibility
-                safe_document_id = str(document_id).replace('-', '')
-                point_id = f"{safe_document_id}_{i:04d}"
+            # Create LangChain documents
+            documents = []
+            for i, chunk in enumerate(chunks):
+                chunk_metadata = {
+                    **doc_metadata,
+                    "chunk_index": i,
+                    "total_chunks": len(chunks)
+                }
 
-                # Ensure all payload values are JSON serializable
-                safe_metadata = {}
-                for key, value in metadata.items():
-                    try:
-                        import json
-                        # Test serialization and ensure compatible types
-                        json.dumps(value)
-                        # Ensure value is a basic JSON type
-                        if isinstance(value, (str, int, float, bool)) or value is None:
-                            safe_metadata[str(key)] = value
-                        elif isinstance(value, (list, dict)):
-                            # Convert complex types to string for safety
-                            safe_metadata[str(key)] = str(value)
-                        else:
-                            safe_metadata[str(key)] = str(value)
-                    except (TypeError, ValueError):
-                        safe_metadata[str(key)] = str(value)  # Convert to string if not serializable
+                documents.append(LangChainDocument(
+                    page_content=chunk,
+                    metadata=chunk_metadata
+                ))
 
-                # Create point using proper PointStruct format
-                points.append(
-                    models.PointStruct(
-                        id=str(point_id),  # String ID
-                        vector=list(embedding) if not isinstance(embedding, list) else embedding,  # Ensure vector is a list
-                        payload={
-                            **safe_metadata,
-                            "document_id": str(document_id),
-                            "chunk_index": int(i),
-                            "chunk_text": str(chunk),
-                            "total_chunks": int(len(chunks))
-                        }
-                    )
-                )
+            # Add documents to vector store
+            await vector_store.aadd_documents(documents)
 
-            # Upload to Qdrant
-            try:
-                self.client.upsert(
-                    collection_name=collection_name,
-                    wait=True,
-                    points=points
-                )
-            except Exception as e:
-                logger.warning(f"Qdrant upsert failed (temporarily bypassed): {e}")
-                # Continue without failing the document creation
-                pass
-
-            logger.info(f"Added document {document_id} with {len(chunks)} chunks to {collection_name}")
+            logger.info(f"Added document {document_id} with {len(chunks)} chunks to namespace {namespace}")
 
         except Exception as e:
             logger.error(f"Failed to add document {document_id}: {e}")
@@ -190,6 +115,8 @@ class QdrantService:
         """Delete a document from the vector database"""
 
         try:
+            from qdrant_client.http import models
+
             collection_name = f"documents_{namespace}"
 
             # Get all points for this document
@@ -199,7 +126,7 @@ class QdrantService:
                     must=[
                         models.FieldCondition(
                             key="document_id",
-                            match=models.MatchValue(value=document_id)
+                            match=models.MatchValue(value=str(document_id))
                         )
                     ]
                 ),
@@ -232,45 +159,48 @@ class QdrantService:
         """Search for relevant documents"""
 
         try:
-            # Get query embedding
-            query_embedding = (await self.get_embeddings([query]))[0]
-
             results = []
 
-            # Determine which collections to search
+            # Determine which namespaces to search
             if namespace:
-                collections = [f"documents_{namespace}"]
+                namespaces = [namespace]
             else:
-                # Search all collections
+                # Get all collections to determine available namespaces
                 all_collections = self.client.get_collections().collections
-                collections = [
-                    col.name for col in all_collections
+                namespaces = [
+                    col.name.replace("documents_", "")
+                    for col in all_collections
                     if col.name.startswith("documents_")
                 ]
 
-            for collection_name in collections:
+            for ns in namespaces:
                 try:
-                    search_result = self.client.search(
-                        collection_name=collection_name,
-                        query_vector=query_embedding,
-                        limit=limit * 2,  # Get more results for deduplication
-                        score_threshold=score_threshold
+                    vector_store = self._get_vector_store(ns)
+
+                    # Use similarity search with score threshold
+                    search_results = await vector_store.asimilarity_search_with_score(
+                        query=query,
+                        k=limit * 2  # Get more results for deduplication
                     )
 
-                    for hit in search_result:
-                        results.append({
-                            "document_id": hit.payload.get("document_id"),
-                            "namespace": collection_name.replace("documents_", ""),
-                            "score": hit.score,
-                            "chunk_text": hit.payload.get("chunk_text", ""),
-                            "metadata": {
-                                k: v for k, v in hit.payload.items()
-                                if k not in ["document_id", "chunk_text", "chunk_index", "total_chunks"]
-                            }
-                        })
+                    for doc, score in search_results:
+                        if score >= score_threshold:
+                            # Extract metadata
+                            metadata = doc.metadata.copy()
+                            document_id = metadata.pop("document_id", "")
+                            chunk_index = metadata.pop("chunk_index", 0)
+                            total_chunks = metadata.pop("total_chunks", 1)
+
+                            results.append({
+                                "document_id": document_id,
+                                "namespace": ns,
+                                "score": score,
+                                "chunk_text": doc.page_content,
+                                "metadata": metadata
+                            })
 
                 except Exception as e:
-                    logger.warning(f"Failed to search collection {collection_name}: {e}")
+                    logger.warning(f"Failed to search namespace {ns}: {e}")
                     continue
 
             # Sort by score and deduplicate by document_id
@@ -305,13 +235,13 @@ class QdrantService:
             return {
                 "name": namespace,
                 "collection_name": collection_name,
-                "vectors_count": info.vectors_count,
-                "indexed_vectors_count": info.indexed_vectors_count,
-                "points_count": info.points_count,
-                "segments_count": info.segments_count,
+                "vectors_count": info.vectors_count if hasattr(info, 'vectors_count') else 0,
+                "indexed_vectors_count": info.indexed_vectors_count if hasattr(info, 'indexed_vectors_count') else 0,
+                "points_count": info.points_count if hasattr(info, 'points_count') else 0,
+                "segments_count": info.segments_count if hasattr(info, 'segments_count') else 0,
                 "config": {
-                    "distance": info.config.params.vectors.distance,
-                    "size": info.config.params.vectors.size
+                    "distance": info.config.params.vectors.distance if hasattr(info.config.params.vectors, 'distance') else 'cosine',
+                    "size": info.config.params.vectors.size if hasattr(info.config.params.vectors, 'size') else 1536
                 }
             }
 

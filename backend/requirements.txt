@@ -11,12 +11,13 @@ langchain-openai==0.0.5
 langchain-community==0.0.10
 
 # Database
-sqlalchemy==2.0.23
+sqlalchemy==2.0.44
 alembic==1.13.0
 aiosqlite==0.19.0
 
 # Vector Database
 qdrant-client==1.15.1
+langchain-qdrant==0.1.0
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
