@@ -136,6 +136,36 @@ jobs:
 
           echo "✅ Updated task definition with new image"
 
+      - name: Stop existing tasks to prevent Qdrant file lock conflicts
+        run: |
+          echo "🛑 Stopping existing tasks to release Qdrant file locks..."
+
+          # Get all running tasks for the service
+          RUNNING_TASKS=$(aws ecs list-tasks \
+            --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE \
+            --desired-status RUNNING \
+            --query 'taskArns[]' \
+            --output text)
+
+          if [ -n "$RUNNING_TASKS" ] && [ "$RUNNING_TASKS" != "None" ]; then
+            echo "Found running tasks: $RUNNING_TASKS"
+
+            # Stop each running task
+            for task in $RUNNING_TASKS; do
+              echo "Stopping task: $task"
+              aws ecs stop-task \
+                --cluster $ECS_CLUSTER \
+                --task $task \
+                --reason "Deployment: Preventing Qdrant file lock conflicts"
+            done
+
+            echo "⏳ Waiting 30 seconds for tasks to fully stop and release file locks..."
+            sleep 30
+          else
+            echo "No running tasks found to stop."
+          fi
+
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:

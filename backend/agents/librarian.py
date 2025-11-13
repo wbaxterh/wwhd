@@ -97,17 +97,18 @@ class LibrarianAgent:
     async def _search_namespace(self, namespace: str, query_vector: List[float], limit: int) -> List:
         """Search a specific namespace/collection in Qdrant"""
         try:
-            # Check if collection exists
+            # Check if collection exists (with documents_ prefix)
+            collection_name = f"documents_{namespace}"
             collections = await self.qdrant.get_collections()
             collection_names = [c.name for c in collections.collections]
 
-            if namespace not in collection_names:
-                logger.warning(f"Collection {namespace} not found in Qdrant")
+            if collection_name not in collection_names:
+                logger.warning(f"Collection {collection_name} not found in Qdrant")
                 return []
 
             # Perform vector search
             search_result = await self.qdrant.search(
-                collection_name=namespace,
+                collection_name=collection_name,
                 query_vector=query_vector,
                 limit=limit,
                 score_threshold=self.search_config["score_threshold"],
