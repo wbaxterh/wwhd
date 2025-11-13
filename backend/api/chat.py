@@ -208,6 +208,8 @@ async def create_message_stream(
                     agents_used = chunk.get("agents", [])
                 elif chunk.get("type") == "sources":
                     sources = chunk.get("sources", [])
+                    # Stream citations to frontend
+                    yield f"data: {json.dumps({'type': 'citation', 'citations': sources})}\n\n"
 
             # Save the complete response to database
             assistant_message = Message(
