@@ -95,11 +95,26 @@ class RouterAgent:
         # Map to namespaces
         namespaces = self._select_namespaces(intent, confidence, state["user_message"])
 
+        # Check for queries that should skip document retrieval
+        message_lower = state["user_message"].lower()
+        skip_retrieval_keywords = ["hello", "hi", "thank you", "thanks", "goodbye", "bye"]
+        should_skip_retrieval = any(keyword in message_lower and len(message_lower.split()) <= 3 for keyword in skip_retrieval_keywords)
+
         state["intent"] = intent
         state["confidence"] = confidence
         state["selected_namespaces"] = namespaces
         state["current_node"] = "router"
-        state["next_node"] = "librarian" if namespaces and "general" not in namespaces else "interpreter"
+
+        # Default behavior: check documents first unless it's a simple greeting
+        # This ensures Herman looks for relevant documents before answering
+        if should_skip_retrieval:
+            state["next_node"] = "interpreter"
+        else:
+            # Always try to find relevant documents first
+            if not namespaces or namespaces == ["general"]:
+                # For general queries, search across all available namespaces
+                state["selected_namespaces"] = ["relationships", "money", "business", "feng_shui", "diet_food", "exercise_martial_arts", "meditation"]
+            state["next_node"] = "librarian"
 
         return state
 

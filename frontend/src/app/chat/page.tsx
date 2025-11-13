@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { AuthModal } from '@/components/AuthModal';
-import { Markdown } from '@assistant-ui/react-markdown';
+import ReactMarkdown from 'react-markdown';
 
 interface Citation {
   title: string;
@@ -170,7 +170,7 @@ function ChatInterface() {
               {message.role === 'assistant' ? (
                 <>
                   <div className="prose prose-sm max-w-none">
-                    <Markdown>{message.content}</Markdown>
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
                   {message.citations && message.citations.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/30">
