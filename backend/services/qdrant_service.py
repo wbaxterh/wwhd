@@ -109,14 +109,27 @@ class QdrantService:
             # Prepare points for Qdrant
             points = []
             for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-                point_id = f"{document_id}_{i}"
+                # Use safe point ID format
+                safe_document_id = str(document_id).replace('-', '')
+                point_id = f"{safe_document_id}_{i:04d}"
+
+                # Ensure all payload values are JSON serializable
+                safe_metadata = {}
+                for key, value in metadata.items():
+                    try:
+                        import json
+                        json.dumps(value)  # Test serialization
+                        safe_metadata[key] = value
+                    except (TypeError, ValueError):
+                        safe_metadata[key] = str(value)  # Convert to string if not serializable
+
                 points.append(
                     models.PointStruct(
                         id=point_id,
                         vector=embedding,
                         payload={
-                            **metadata,
-                            "document_id": document_id,
+                            **safe_metadata,
+                            "document_id": str(document_id),
                             "chunk_index": i,
                             "chunk_text": chunk,
                             "total_chunks": len(chunks)

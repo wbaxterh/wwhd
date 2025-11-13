@@ -143,10 +143,11 @@ async def upload_document(
             document_id=vector_id,
             content=extracted_text,
             metadata={
-                "document_id": new_document.id,
-                "title": document_title,
-                "namespace": namespace,
-                **metadata
+                "document_id": str(new_document.id),  # Convert to string
+                "title": str(document_title),
+                "namespace": str(namespace),
+                **{k: str(v) if not isinstance(v, (str, int, float, bool)) else v
+                   for k, v in metadata.items()}  # Ensure all metadata values are serializable
             }
         )
 
