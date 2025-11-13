@@ -109,12 +109,9 @@ class QdrantService:
             # Prepare points for Qdrant
             points = []
             for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-                # Use numeric point ID for better compatibility
-                import hashlib
+                # Use string point ID for Qdrant compatibility
                 safe_document_id = str(document_id).replace('-', '')
-                point_id_str = f"{safe_document_id}_{i:04d}"
-                # Convert to integer hash for Qdrant compatibility
-                point_id = int(hashlib.md5(point_id_str.encode()).hexdigest()[:8], 16)
+                point_id = f"{safe_document_id}_{i:04d}"
 
                 # Ensure all payload values are JSON serializable
                 safe_metadata = {}
@@ -134,22 +131,25 @@ class QdrantService:
                     except (TypeError, ValueError):
                         safe_metadata[str(key)] = str(value)  # Convert to string if not serializable
 
-                # Create point with explicit UUID conversion
-                points.append({
-                    "id": point_id,
-                    "vector": embedding,
-                    "payload": {
-                        **safe_metadata,
-                        "document_id": str(document_id),
-                        "chunk_index": int(i),
-                        "chunk_text": str(chunk),
-                        "total_chunks": int(len(chunks))
-                    }
-                })
+                # Create point using proper PointStruct format
+                points.append(
+                    models.PointStruct(
+                        id=str(point_id),  # String ID
+                        vector=list(embedding) if not isinstance(embedding, list) else embedding,  # Ensure vector is a list
+                        payload={
+                            **safe_metadata,
+                            "document_id": str(document_id),
+                            "chunk_index": int(i),
+                            "chunk_text": str(chunk),
+                            "total_chunks": int(len(chunks))
+                        }
+                    )
+                )
 
             # Upload to Qdrant
             self.client.upsert(
                 collection_name=collection_name,
+                wait=True,
                 points=points
             )
 
@@ -207,7 +207,8 @@ class QdrantService:
                 # Delete all chunks for this document
                 self.client.delete(
                     collection_name=collection_name,
-                    points_selector=point_ids
+                    points_selector=models.PointIdsList(points=point_ids),
+                    wait=True
                 )
 
                 logger.info(f"Deleted document {document_id} ({len(point_ids)} chunks) from {collection_name}")
