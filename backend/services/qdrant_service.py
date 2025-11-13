@@ -118,10 +118,18 @@ class QdrantService:
                 for key, value in metadata.items():
                     try:
                         import json
-                        json.dumps(value)  # Test serialization
-                        safe_metadata[key] = value
+                        # Test serialization and ensure compatible types
+                        json.dumps(value)
+                        # Ensure value is a basic JSON type
+                        if isinstance(value, (str, int, float, bool)) or value is None:
+                            safe_metadata[str(key)] = value
+                        elif isinstance(value, (list, dict)):
+                            # Convert complex types to string for safety
+                            safe_metadata[str(key)] = str(value)
+                        else:
+                            safe_metadata[str(key)] = str(value)
                     except (TypeError, ValueError):
-                        safe_metadata[key] = str(value)  # Convert to string if not serializable
+                        safe_metadata[str(key)] = str(value)  # Convert to string if not serializable
 
                 points.append(
                     models.PointStruct(
@@ -130,9 +138,9 @@ class QdrantService:
                         payload={
                             **safe_metadata,
                             "document_id": str(document_id),
-                            "chunk_index": i,
-                            "chunk_text": chunk,
-                            "total_chunks": len(chunks)
+                            "chunk_index": int(i),
+                            "chunk_text": str(chunk),
+                            "total_chunks": int(len(chunks))
                         }
                     )
                 )

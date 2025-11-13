@@ -143,11 +143,11 @@ async def upload_document(
             document_id=vector_id,
             content=extracted_text,
             metadata={
-                "document_id": str(new_document.id),  # Convert to string
+                "document_id": str(new_document.id),
                 "title": str(document_title),
                 "namespace": str(namespace),
-                **{k: str(v) if not isinstance(v, (str, int, float, bool)) else v
-                   for k, v in metadata.items()}  # Ensure all metadata values are serializable
+                **{str(k): (v if isinstance(v, (str, int, float, bool)) or v is None else str(v))
+                   for k, v in metadata.items()}
             }
         )
 
@@ -201,10 +201,11 @@ async def create_document(
             document_id=vector_id,
             content=document_data.content,
             metadata={
-                "document_id": new_document.id,
-                "title": document_data.title,
-                "namespace": document_data.namespace,
-                **metadata
+                "document_id": str(new_document.id),
+                "title": str(document_data.title),
+                "namespace": str(document_data.namespace),
+                **{str(k): (v if isinstance(v, (str, int, float, bool)) or v is None else str(v))
+                   for k, v in metadata.items()}
             }
         )
 
@@ -267,10 +268,11 @@ async def update_document(
                 document_id=document.vector_id,
                 content=document_data.content,
                 metadata={
-                    "document_id": document.id,
-                    "title": document.title,
-                    "namespace": document.namespace,
-                    **(document.metadata_json or {})
+                    "document_id": str(document.id),
+                    "title": str(document.title),
+                    "namespace": str(document.namespace),
+                    **{str(k): (v if isinstance(v, (str, int, float, bool)) or v is None else str(v))
+                       for k, v in (document.metadata_json or {}).items()}
                 }
             )
 
