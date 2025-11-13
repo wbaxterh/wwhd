@@ -130,7 +130,7 @@ function KnowledgeBaseInterface() {
   // Helper functions for namespace management
   const getAllAvailableNamespaces = () => {
     const existing = namespaces.map(ns => ns.name);
-    const combined = [...new Set([...predefinedNamespaces, ...existing])];
+    const combined = Array.from(new Set([...predefinedNamespaces, ...existing]));
     return combined.sort();
   };
 
