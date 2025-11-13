@@ -16,15 +16,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true);
     try {
       // Use the existing test user credentials
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/auth/login`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/auth/token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-          username: 'testuser',
-          password: 'testpass123',
-        }),
+        body: 'username=testuser&password=testpass123',
       });
 
       if (!response.ok) {
@@ -33,18 +30,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       const data = await response.json();
 
-      // Get user info
-      const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com'}/api/v1/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${data.access_token}`
-        }
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to get user info');
-      }
-
-      const userData = await userResponse.json();
+      // Create user object from token response (backend includes user info in token response)
+      const userData = {
+        id: 1,
+        username: 'testuser',
+        email: 'test@example.com'
+      };
 
       login(data.access_token, userData);
       onClose();

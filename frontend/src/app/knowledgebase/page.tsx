@@ -87,7 +87,8 @@ function KnowledgeBaseInterface() {
 
   const loadNamespaces = async () => {
     try {
-      const response = await fetch('/api/knowledgebase/namespaces', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/namespaces`, {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
@@ -110,7 +111,8 @@ function KnowledgeBaseInterface() {
         params.append('namespace', selectedNamespace);
       }
 
-      const response = await fetch(`/api/knowledgebase/documents?${params}`, {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/?${params}`, {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
@@ -183,7 +185,8 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/knowledgebase/upload', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/upload`, {
         method: 'POST',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -225,7 +228,8 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/knowledgebase/documents', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +263,8 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/knowledgebase/documents/${editingDocument.id}`, {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/${editingDocument.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -294,7 +299,8 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/knowledgebase/documents/${documentId}`, {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const response = await fetch(`${backendUrl}/api/v1/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
