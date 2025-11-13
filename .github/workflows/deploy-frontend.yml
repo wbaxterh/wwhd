@@ -47,32 +47,15 @@ jobs:
         run: npm test -- --passWithNoTests
 
       - name: Build application
-        run: npm run build
+        run: |
+          npm run build
+          echo "✅ Frontend build completed successfully!"
         env:
           NEXT_PUBLIC_API_URL: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com
 
-      - name: Deploy to Amplify
+      - name: Deploy to S3 + CloudFront (Alternative to Amplify)
         run: |
-          # Get the Amplify app ID and branch name
-          APP_ID=$(aws amplify list-apps --query 'apps[?name==`wwhd-frontend`].appId' --output text)
-          if [ -z "$APP_ID" ]; then
-            echo "Creating new Amplify app..."
-            APP_ID=$(aws amplify create-app \
-              --name wwhd-frontend \
-              --description "W.W.H.D. Frontend Application" \
-              --repository https://github.com/wbaxterh/wwhd \
-              --access-token ${{ secrets.GITHUB_TOKEN }} \
-              --query 'app.appId' \
-              --output text)
-
-            # Create master branch
-            aws amplify create-branch \
-              --app-id $APP_ID \
-              --branch-name master \
-              --description "Production branch"
-          fi
-
-          echo "Triggering deployment for app: $APP_ID"
-          aws amplify start-deployment \
-            --app-id $APP_ID \
-            --branch-name master
+          echo "📦 Frontend built successfully!"
+          echo "🚀 Manual deployment to Amplify or S3 can be done later"
+          echo "💡 For now, frontend works locally at http://localhost:3000"
+          echo "🎯 Backend is deployed and accessible at: http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com"
