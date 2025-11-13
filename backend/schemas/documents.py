@@ -42,15 +42,15 @@ class DocumentResponse(BaseModel):
     source_url: Optional[str]
     vector_id: Optional[str]
     embedding_model: Optional[str]
-    author: Optional[str]
-    published_date: Optional[datetime]
-    tags: Optional[List[str]]
+    author: Optional[str] = None
+    published_date: Optional[datetime] = None
+    tags: Optional[List[str]] = None
     metadata_json: Optional[Dict[str, Any]]
     uploaded_by: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime]
-    retrieval_count: int
-    avg_relevance_score: Optional[float]
+    retrieval_count: int = 0
+    avg_relevance_score: Optional[float] = None
 
     # Computed properties
     @property
