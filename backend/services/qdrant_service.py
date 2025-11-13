@@ -37,7 +37,8 @@ class QdrantService:
         return QdrantVectorStore(
             client=self.client,
             collection_name=collection_name,
-            embeddings=self.embeddings,
+            embedding=self.embeddings,
+            validate_collection_config=False,  # Disable validation for flexibility
         )
 
     async def add_document(
