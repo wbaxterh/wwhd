@@ -1,5 +1,5 @@
 """Knowledge base document management endpoints"""
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 from typing import List, Optional
@@ -87,9 +87,9 @@ async def get_document(
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
     file: UploadFile = File(...),
-    namespace: str = "general",
-    title: Optional[str] = None,
-    youtube_url: Optional[str] = None,
+    namespace: str = Form(default="general"),
+    title: Optional[str] = Form(None),
+    youtube_url: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
