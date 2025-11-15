@@ -82,6 +82,10 @@ class LibrarianAgent:
             # Take top 5 chunks and sort by score
             all_chunks = sorted(all_chunks, key=lambda x: x["score"], reverse=True)
             state["retrieved_chunks"] = all_chunks[:self.search_config["top_k"]]
+
+            # Extract citations for frontend streaming
+            state["citations"] = self._extract_citations(state["retrieved_chunks"])
+
             state["current_node"] = "librarian"
             state["next_node"] = "interpreter"
 
@@ -99,7 +103,7 @@ class LibrarianAgent:
         try:
             # Check if collection exists (with documents_ prefix)
             collection_name = f"documents_{namespace}"
-            collections = await self.qdrant.get_collections()
+            collections = self.qdrant.get_collections()
             collection_names = [c.name for c in collections.collections]
 
             if collection_name not in collection_names:
@@ -107,7 +111,7 @@ class LibrarianAgent:
                 return []
 
             # Perform vector search
-            search_result = await self.qdrant.search(
+            search_result = self.qdrant.search(
                 collection_name=collection_name,
                 query_vector=query_vector,
                 limit=limit,
@@ -167,6 +171,32 @@ class LibrarianAgent:
             "url": metadata.get("source_url", ""),
             "timestamp": metadata.get("timestamp", "")
         }
+
+    def _extract_citations(self, chunks: List[Dict]) -> List[Dict]:
+        """
+        Extract unique citations from retrieved chunks for streaming
+
+        Returns:
+            List of {title, url, timestamp} dicts
+        """
+        citations = []
+
+        for chunk in chunks:
+            meta = chunk["metadata"]
+
+            # Include citations with source title (URL is optional)
+            if meta.get("source_title"):
+                citation = {
+                    "title": meta["source_title"],
+                    "url": meta.get("source_url", ""),
+                    "timestamp": meta.get("timestamp", "")
+                }
+
+                # Avoid duplicate citations
+                if citation not in citations:
+                    citations.append(citation)
+
+        return citations
 
     def get_retrieval_stats(self, chunks: List[Dict]) -> Dict:
         """Get statistics about retrieved chunks"""
