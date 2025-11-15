@@ -112,8 +112,8 @@ class RouterAgent:
         else:
             # Always try to find relevant documents first
             if not namespaces or namespaces == ["general"]:
-                # For general queries, search across all available namespaces
-                state["selected_namespaces"] = ["relationships", "money", "business", "feng_shui", "diet_food", "exercise_martial_arts", "meditation"]
+                # For general queries, search across all available namespaces INCLUDING general
+                state["selected_namespaces"] = ["general", "relationships", "money", "business", "feng_shui", "diet_food", "exercise_martial_arts", "meditation"]
             state["next_node"] = "librarian"
 
         return state
