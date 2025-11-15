@@ -54,10 +54,6 @@ class LibrarianAgent:
             # Search across namespaces
             all_chunks = []
             for namespace in state["selected_namespaces"]:
-                if namespace == "general":
-                    # Skip general namespace for now - would search across all collections
-                    continue
-
                 try:
                     results = await self._search_namespace(
                         namespace=namespace,
