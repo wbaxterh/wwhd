@@ -4,6 +4,7 @@ Performs hybrid retrieval from Qdrant vector database and manages reranking
 """
 from typing import List, Dict, Any, Optional
 from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 import logging
@@ -95,10 +96,18 @@ class LibrarianAgent:
         return state
 
     async def _search_namespace(self, namespace: str, query_vector: List[float], limit: int) -> List:
-        """Search a specific namespace/collection in Qdrant"""
+        """Search a specific namespace/collection in Qdrant using LangChain VectorStore"""
         try:
-            # Check if collection exists (with documents_ prefix)
+            # Use same QdrantVectorStore as upload process for consistency
             collection_name = f"documents_{namespace}"
+            vector_store = QdrantVectorStore(
+                client=self.qdrant,
+                collection_name=collection_name,
+                embedding=self.embedder,
+                validate_collection_config=False
+            )
+
+            # Check if collection exists
             collections = self.qdrant.get_collections()
             collection_names = [c.name for c in collections.collections]
 
@@ -106,17 +115,29 @@ class LibrarianAgent:
                 logger.warning(f"Collection {collection_name} not found in Qdrant")
                 return []
 
-            # Perform vector search
-            search_result = self.qdrant.search(
-                collection_name=collection_name,
-                query_vector=query_vector,
-                limit=limit,
-                score_threshold=self.search_config["score_threshold"],
-                with_payload=True,
-                with_vectors=False
+            # Use LangChain's similarity search with score threshold
+            # Convert query vector to query string (we'll need to pass the original query)
+            # For now, let's use a dummy query and rely on the vector
+            search_results = vector_store.similarity_search_with_score_by_vector(
+                query_vector,
+                k=limit,
+                score_threshold=self.search_config["score_threshold"]
             )
 
-            return search_result
+            # Convert LangChain results to our expected format
+            formatted_results = []
+            for doc, score in search_results:
+                # Create result object that matches what _format_chunks expects
+                result_obj = type('SearchResult', (), {
+                    'payload': {
+                        'content': doc.page_content,
+                        **doc.metadata
+                    },
+                    'score': score
+                })()
+                formatted_results.append(result_obj)
+
+            return formatted_results
 
         except Exception as e:
             logger.error(f"Error searching namespace {namespace}: {e}")
