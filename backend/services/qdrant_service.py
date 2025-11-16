@@ -34,12 +34,41 @@ class QdrantService:
         """Get or create a QdrantVectorStore for the given namespace"""
         collection_name = f"documents_{namespace}"
 
+        # Ensure collection exists before creating vector store
+        self._ensure_collection_exists(collection_name)
+
         return QdrantVectorStore(
             client=self.client,
             collection_name=collection_name,
             embedding=self.embeddings,
             validate_collection_config=False,  # Disable validation for flexibility
         )
+
+    def _ensure_collection_exists(self, collection_name: str) -> None:
+        """Ensure a Qdrant collection exists, create it if it doesn't"""
+        try:
+            # Check if collection exists
+            collections = self.client.get_collections()
+            existing_names = [c.name for c in collections.collections]
+
+            if collection_name not in existing_names:
+                logger.info(f"Creating new Qdrant collection: {collection_name}")
+
+                # Create collection with proper configuration for OpenAI embeddings
+                self.client.create_collection(
+                    collection_name=collection_name,
+                    vectors_config=models.VectorParams(
+                        size=1536,  # OpenAI text-embedding-3-small dimensions
+                        distance=models.Distance.COSINE
+                    )
+                )
+                logger.info(f"Successfully created collection: {collection_name}")
+            else:
+                logger.debug(f"Collection {collection_name} already exists")
+
+        except Exception as e:
+            logger.error(f"Error ensuring collection {collection_name} exists: {e}")
+            raise
 
     async def add_document(
         self,
