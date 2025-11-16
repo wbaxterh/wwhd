@@ -5,6 +5,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LangChainDocument
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 from config import settings
 import logging
 
