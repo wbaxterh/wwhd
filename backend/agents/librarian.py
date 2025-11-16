@@ -26,7 +26,7 @@ class LibrarianAgent:
         # Retrieval parameters from AGENTS.md
         self.search_config = {
             "top_k": 5,
-            "score_threshold": 0.3,  # Lowered from 0.7 to allow more results
+            "score_threshold": 0.2,  # Lowered to 0.2 to allow semantic matches
             "include_metadata": True,
             "use_mmr": False  # Maximal Marginal Relevance - disabled in v0.1
         }
