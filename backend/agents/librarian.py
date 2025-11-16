@@ -124,7 +124,9 @@ class LibrarianAgent:
                 if hasattr(result, 'payload') and result.payload:
                     text_content = result.payload.get("page_content", result.payload.get("content", ""))
                     logger.info(f"Result {i} content preview: {text_content[:200]}...")
-                    logger.info(f"Result {i} title: {result.payload.get('title', 'No title')}")
+                    title_direct = result.payload.get('title', 'No direct title')
+                    title_nested = result.payload.get('metadata', {}).get('title', 'No nested title')
+                    logger.info(f"Result {i} direct title: {title_direct}, nested title: {title_nested}")
 
             return search_result
 
@@ -154,7 +156,7 @@ class LibrarianAgent:
                     "metadata": {
                         "namespace": namespace,
                         "source_url": result.payload.get("source_url", ""),
-                        "source_title": result.payload.get("title", "Unknown Source"),
+                        "source_title": result.payload.get("metadata", {}).get("title", result.payload.get("title", "Unknown Source")),
                         "timestamp": result.payload.get("transcript_timestamp", ""),
                         "tags": result.payload.get("tags", []),
                         "chunk_index": result.payload.get("chunk_index", 0),
