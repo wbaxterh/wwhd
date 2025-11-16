@@ -96,18 +96,10 @@ class LibrarianAgent:
         return state
 
     async def _search_namespace(self, namespace: str, query_vector: List[float], limit: int) -> List:
-        """Search a specific namespace/collection in Qdrant using LangChain VectorStore"""
+        """Search a specific namespace/collection in Qdrant using raw client"""
         try:
-            # Use same QdrantVectorStore as upload process for consistency
+            # Check if collection exists (with documents_ prefix)
             collection_name = f"documents_{namespace}"
-            vector_store = QdrantVectorStore(
-                client=self.qdrant,
-                collection_name=collection_name,
-                embedding=self.embedder,
-                validate_collection_config=False
-            )
-
-            # Check if collection exists
             collections = self.qdrant.get_collections()
             collection_names = [c.name for c in collections.collections]
 
@@ -115,29 +107,17 @@ class LibrarianAgent:
                 logger.warning(f"Collection {collection_name} not found in Qdrant")
                 return []
 
-            # Use LangChain's similarity search with score threshold
-            # Convert query vector to query string (we'll need to pass the original query)
-            # For now, let's use a dummy query and rely on the vector
-            search_results = vector_store.similarity_search_with_score_by_vector(
-                query_vector,
-                k=limit,
-                score_threshold=self.search_config["score_threshold"]
+            # Use raw QdrantClient search (compatible with LangChain stored data)
+            search_result = self.qdrant.search(
+                collection_name=collection_name,
+                query_vector=query_vector,
+                limit=limit,
+                score_threshold=self.search_config["score_threshold"],
+                with_payload=True,
+                with_vectors=False
             )
 
-            # Convert LangChain results to our expected format
-            formatted_results = []
-            for doc, score in search_results:
-                # Create result object that matches what _format_chunks expects
-                result_obj = type('SearchResult', (), {
-                    'payload': {
-                        'content': doc.page_content,
-                        **doc.metadata
-                    },
-                    'score': score
-                })()
-                formatted_results.append(result_obj)
-
-            return formatted_results
+            return search_result
 
         except Exception as e:
             logger.error(f"Error searching namespace {namespace}: {e}")
@@ -146,6 +126,7 @@ class LibrarianAgent:
     def _format_chunks(self, results: List, namespace: str) -> List[Dict]:
         """
         Format Qdrant search results as specified in AGENTS.md
+        Handles LangChain's data format where content is in page_content
 
         Returns:
             List of dicts with {text, score, metadata} structure
@@ -154,13 +135,17 @@ class LibrarianAgent:
 
         for result in results:
             try:
+                # LangChain stores text content in 'page_content' field
+                text_content = (result.payload.get("page_content", "") or
+                              result.payload.get("content", ""))
+
                 chunk = {
-                    "text": result.payload.get("content", ""),
+                    "text": text_content,
                     "score": float(result.score),
                     "metadata": {
                         "namespace": namespace,
                         "source_url": result.payload.get("source_url", ""),
-                        "source_title": result.payload.get("source_title", "Unknown Source"),
+                        "source_title": result.payload.get("title", "Unknown Source"),
                         "timestamp": result.payload.get("transcript_timestamp", ""),
                         "tags": result.payload.get("tags", []),
                         "chunk_index": result.payload.get("chunk_index", 0),
