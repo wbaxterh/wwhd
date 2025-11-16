@@ -117,6 +117,15 @@ class LibrarianAgent:
                 with_vectors=False
             )
 
+            # Debug logging to see what's actually being retrieved
+            logger.info(f"Search results for {collection_name}: {len(search_result)} results")
+            for i, result in enumerate(search_result):
+                logger.info(f"Result {i}: score={result.score}, payload keys={list(result.payload.keys())}")
+                if hasattr(result, 'payload') and result.payload:
+                    text_content = result.payload.get("page_content", result.payload.get("content", ""))
+                    logger.info(f"Result {i} content preview: {text_content[:200]}...")
+                    logger.info(f"Result {i} title: {result.payload.get('title', 'No title')}")
+
             return search_result
 
         except Exception as e:
