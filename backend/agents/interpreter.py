@@ -57,6 +57,10 @@ Guidelines:
             # Build context from chunks
             context = self._build_context(state["retrieved_chunks"])
 
+            # Debug: Log the actual context being passed to LLM
+            logger.info(f"InterpreterAgent context for question '{state['user_message'][:50]}...': {len(state['retrieved_chunks'])} chunks")
+            logger.info(f"Built context: {context[:500]}...")  # First 500 chars of context
+
             # Generate response
             prompt = self._build_interpretation_prompt(
                 question=state["user_message"],
