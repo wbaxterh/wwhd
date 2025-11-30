@@ -75,7 +75,7 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug_mode else None
 )
 
-# Configure CORS
+# Configure CORS - Use origins from settings
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

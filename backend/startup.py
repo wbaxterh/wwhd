@@ -72,6 +72,24 @@ async def startup_sequence():
         print(f"❌ User creation failed: {e}")
         return False
 
+    # Sync Qdrant collections to SQLite if needed
+    try:
+        print("🔄 Checking if Qdrant->SQLite sync is needed...")
+        from sync_qdrant_to_sqlite import sync_qdrant_to_sqlite
+        await sync_qdrant_to_sqlite()
+        print("✅ Qdrant->SQLite sync completed")
+    except Exception as e:
+        print(f"⚠️ Qdrant->SQLite sync skipped: {e}")
+
+    # Seed Herman's core teachings if they don't exist
+    try:
+        print("🌱 Checking if Herman's teachings need to be seeded...")
+        from seed_knowledge_base import seed_knowledge_base
+        await seed_knowledge_base()
+        print("✅ Herman's teachings seeding completed")
+    except Exception as e:
+        print(f"⚠️ Herman's teachings seeding skipped: {e}")
+
     print("🎉 Backend initialization completed successfully!")
     return True
 

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_v1_prefix: str = Field(default="/api/v1", env="API_V1_PREFIX")
     cors_origins: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:3001"],
+        default=["http://localhost:3000", "http://localhost:3001", "https://wwhd.weshuber.com", "https://master.d5k96ieg9yk7u.amplifyapp.com"],
         env="CORS_ORIGINS"
     )
     allow_credentials: bool = Field(default=True, env="ALLOW_CREDENTIALS")

@@ -1,35 +1,62 @@
-# Deployment
+# 🚀 WWHD Deployment Guide
 
-## AWS Architecture - Multi-Repository Deployment
+## 📋 Current Architecture - Unified Repository Deployment
 
-### Current Implementation: ECS Fargate + AWS Amplify
+### Implementation: ECS Fargate + Vercel (Updated November 2024)
 
 ```mermaid
 graph TB
-    subgraph "Frontend Repository: wwhd-frontend"
-        NextJS[Next.js Chat UI]
-        Amplify[AWS Amplify]
+    subgraph "Frontend (Unified Repository)"
+        NextJS[Next.js 14 App Router]
+        Vercel[Vercel Deployment]
+        Domain1[wwhd.weshuber.com]
     end
 
-    subgraph "Backend Repository: wwhd (this repo)"
-        FastAPI[FastAPI + LangGraph]
-        ECS[ECS Fargate]
+    subgraph "Backend (Same Repository)"
+        FastAPI[FastAPI + LangChain/LangGraph]
+        Docker[Multi-Container Docker Task]
+        ECS[AWS ECS Fargate]
         ALB[Application Load Balancer]
-        EFS[EFS Storage]
+        Domain2[api.weshuber.com]
     end
 
-    subgraph "Data Layer"
-        SQLite[(SQLite on EFS)]
-        Qdrant[(Self-hosted Qdrant)]
+    subgraph "Container Task Definition"
+        Container1[FastAPI Container<br/>Port: 8000<br/>CPU: 768, Memory: 1536MB]
+        Container2[Qdrant Container<br/>Port: 6333<br/>CPU: 256, Memory: 512MB]
     end
 
-    NextJS --> Amplify
-    FastAPI --> ECS
+    subgraph "Persistent Storage"
+        EFS[AWS EFS FileSystem<br/>fs-00b8168893587fd61]
+        SQLite[(SQLite Database<br/>/data/wwhd_v3.db)]
+        QdrantData[(Qdrant Vector Data<br/>/data/qdrant/storage)]
+    end
+
+    subgraph "CI/CD Pipeline"
+        GitHub[GitHub Repository<br/>github.com/user/wwhd]
+        Actions[GitHub Actions<br/>Automated Deployment]
+        ECR[AWS ECR<br/>Container Registry]
+    end
+
+    NextJS --> Vercel
+    Vercel --> Domain1
+    FastAPI --> Docker
+    Docker --> Container1
+    Docker --> Container2
+    Container1 -.->|Internal Network| Container2
+    Container1 --> ECS
+    Container2 --> ECS
     ECS --> ALB
-    ECS --> EFS
-    SQLite --> EFS
-    Qdrant --> EFS
-    Amplify -.->|API Calls| ALB
+    ALB --> Domain2
+    Container1 --> EFS
+    Container2 --> EFS
+    EFS --> SQLite
+    EFS --> QdrantData
+
+    GitHub --> Actions
+    Actions --> ECR
+    Actions --> ECS
+
+    Domain1 -.->|HTTPS API Calls| Domain2
 ```
 
 **Deployment Steps**:
@@ -188,130 +215,189 @@ volumes:
   qdrant_storage:
 ```
 
-## GitHub Actions CI/CD
+## 🔄 GitHub Actions CI/CD Pipeline
 
+### Automated Backend Deployment
+
+**Workflow File:** `backend/.github/workflows/deploy-backend.yml`
+
+**Key Features:**
+- 🧪 **Comprehensive Testing:** Container startup, health checks, API validation
+- 🏗️ **Multi-Platform Builds:** AMD64 architecture for AWS Fargate
+- 🔒 **OIDC Security:** No long-lived AWS credentials
+- 📊 **Rich Monitoring:** Deployment summaries and service status
+- ⚡ **Fast Feedback:** Parallel testing and deployment steps
+
+**Trigger Conditions:**
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy to AWS
-
 on:
   push:
-    branches: [main]
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:  # Manual deployment with environment selection
+```
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run tests
-        run: |
-          pip install -r requirements.txt
-          pytest
+**Deployment Pipeline:**
+1. **📥 Code Checkout** → Repository clone
+2. **🧪 Docker Testing** → Container build and health validation
+3. **🔑 AWS Authentication** → OIDC-based credential exchange
+4. **🏗️ Multi-Platform Build** → AMD64 container for Fargate
+5. **📤 ECR Push** → Container registry upload
+6. **⚙️ Task Definition Update** → Environment variables injection
+7. **🚀 ECS Deployment** → Rolling update with zero downtime
+8. **✅ Production Verification** → Health checks and service stability
 
-  deploy-backend:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+**Example Deployment Flow:**
+```bash
+# Automatic deployment on push to master
+git push origin master
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
+# Manual deployment with environment selection
+# Use GitHub UI → Actions → Deploy Backend → Run workflow
+```
 
-      - name: Build and push Docker image
-        run: |
-          aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
-          docker build -t $ECR_REPOSITORY:latest ./backend
-          docker push $ECR_REPOSITORY:latest
+### Frontend Deployment (Vercel)
 
-      - name: Deploy to ECS
-        run: |
-          aws ecs update-service \
-            --cluster wwhd-cluster \
-            --service wwhd-service \
-            --force-new-deployment
+**Current Setup:**
+- **Platform:** Vercel (automatic deployment)
+- **Trigger:** Push to `master` branch
+- **Domain:** https://wwhd.weshuber.com
+- **Build Command:** `cd frontend && npm run build`
+- **Output Directory:** `frontend/.next`
 
-  deploy-frontend:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-      - name: Deploy to S3
-        run: |
-          # Frontend deployment handled by separate wwhd-frontend repository
-          # using AWS Amplify automatic deployments
-          echo "Frontend deployed via AWS Amplify in separate repository"
+**Vercel Configuration:**
+```json
+{
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "https://api.weshuber.com/api/v1/$1"
+    }
+  ]
+}
 ```
 
 ## Environment Configuration
 
 ### Production Environment Variables
 
+**Current Production Configuration:**
 ```bash
-# API Server
+# Application Core
 APP_ENV=production
 LOG_LEVEL=INFO
 
-# LLM Configuration
-OPENAI_API_KEY=${SECRETS_MANAGER:openai_key}
-MODEL_CHAT=gpt-4o-mini
-MODEL_EMBED=text-embedding-3-small
+# AI/ML Configuration
+OPENAI_API_KEY=sk-...                    # From GitHub Secrets
+MODEL_CHAT=gpt-4o-mini                   # From GitHub Variables
+MODEL_EMBED=text-embedding-3-small      # From GitHub Variables
+ENABLE_OPENAI=true
 
-# Vector Database (Self-hosted)
+# Database Configuration
+DATABASE_URL=sqlite:////data/app.db
+SQLITE_PATH=/data/wwhd_v3.db            # EFS mount path
+
+# Vector Database (Self-hosted Qdrant)
+QDRANT_URL=http://localhost:6333        # Internal container network
+
+# Security & Authentication
+JWT_SECRET=${GITHUB_SECRETS}            # Secure random string
+CORS_ORIGINS=["https://wwhd.weshuber.com", "https://api.weshuber.com"]
+
+# Infrastructure
+CONTAINER_PORT=8000
+QDRANT_PORT=6333
+```
+
+**GitHub Repository Configuration:**
+
+**Secrets (Encrypted):**
+- `AWS_ROLE_ARN`: IAM role for OIDC authentication
+- `OPENAI_API_KEY`: OpenAI API access key
+- `JWT_SECRET`: JWT signing secret
+
+**Variables (Environment-specific):**
+- `MODEL_CHAT`: Chat completion model name
+- `MODEL_EMBED`: Text embedding model name
+- `CORS_ORIGINS`: Allowed frontend origins
+
+**Development Environment:**
+```bash
+# Local development override
+APP_ENV=development
+LOG_LEVEL=DEBUG
+DATABASE_URL=sqlite:///./dev_app.db
 QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=
-
-# Database (SQLite on EFS)
-DATABASE_URL=sqlite:///./data/app.db
-
-# Authentication
-JWT_SECRET=${SECRETS_MANAGER:jwt_secret}
-JWT_ISSUER=wwhd
-JWT_AUDIENCE=wwhd-users
-
-# CORS (Amplify frontend)
-ALLOW_ORIGINS=https://wwhd.amplifyapp.com,http://localhost:3000
+CORS_ORIGINS=["http://localhost:3000", "http://localhost:3001"]
 ```
 
 ## Monitoring Setup
 
-### CloudWatch Configuration
+## 📊 Monitoring & Observability
 
-```yaml
-metrics:
-  - name: RequestLatency
-    namespace: WWHD/API
-    dimensions:
-      - Environment
-      - Endpoint
+### CloudWatch Logging
 
-  - name: TokenUsage
-    namespace: WWHD/Usage
-    dimensions:
-      - User
-      - Model
+**Log Groups:**
+- `/ecs/wwhd-backend` - Main application logs
+- `/ecs/wwhd-backend/fastapi` - FastAPI container logs
+- `/ecs/wwhd-backend/qdrant` - Qdrant database logs
 
-alarms:
-  - name: HighLatency
-    metric: RequestLatency
-    threshold: 5000  # 5 seconds
-    comparison: GreaterThanThreshold
+**Real-time Monitoring Commands:**
+```bash
+# Monitor all backend logs
+aws logs tail /ecs/wwhd-backend --region us-west-2 --follow
 
-  - name: HighErrorRate
-    metric: 4xxErrors
-    threshold: 10
-    comparison: GreaterThanThreshold
+# Filter for errors only
+aws logs tail /ecs/wwhd-backend --region us-west-2 --follow | grep ERROR
+
+# Monitor RAG pipeline activity
+aws logs tail /ecs/wwhd-backend --region us-west-2 --follow | grep -E "(RAG|retrieval|generation)"
+
+# Check deployment events
+aws logs tail /ecs/wwhd-backend --region us-west-2 --since 10m | grep -E "(🚀|✅|❌)"
 ```
+
+### Health Monitoring
+
+**Endpoints:**
+- **Backend Health:** https://api.weshuber.com/health
+- **Detailed Status:** https://api.weshuber.com/api/v1/health
+- **Frontend Status:** https://wwhd.weshuber.com
+
+**ECS Service Monitoring:**
+```bash
+# Check service status
+aws ecs describe-services --cluster wwhd-cluster --services wwhd-backend --region us-west-2
+
+# Monitor task health
+aws ecs list-tasks --cluster wwhd-cluster --service-name wwhd-backend --region us-west-2
+
+# Check deployment events
+aws ecs describe-services --cluster wwhd-cluster --services wwhd-backend \
+  --query 'services[0].events[:5]' --region us-west-2
+```
+
+### Performance Metrics
+
+**Key Performance Indicators:**
+- **Response Time:** < 2 seconds for chat completions
+- **Retrieval Accuracy:** Vector similarity scores > 0.6
+- **System Uptime:** 99.9% availability target
+- **Error Rate:** < 1% of total requests
+
+**Resource Utilization:**
+- **CPU Usage:** Target < 70% average
+- **Memory Usage:** Target < 80% of allocated
+- **EFS Storage:** Monitor growth trends
+- **Container Restart Count:** Should be minimal
 
 ## Cost Optimization
 

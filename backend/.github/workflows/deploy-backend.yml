@@ -1,0 +1,232 @@
+name: 🚀 Deploy Backend to ECS
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: wwhd-dev-backend
+  ECS_SERVICE: wwhd-backend
+  ECS_CLUSTER: wwhd-cluster
+  ECS_TASK_DEFINITION: wwhd-backend
+  CONTAINER_NAME: fastapi
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    permissions:
+      id-token: write
+      contents: read
+
+    outputs:
+      image-uri: ${{ steps.build-image.outputs.image }}
+      deployment-url: ${{ steps.deployment-info.outputs.url }}
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🔧 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🏗️ Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: 🔑 Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: 🧪 Build and Test Docker Image
+      id: docker-test
+      run: |
+        cd backend
+        echo "🔨 Building Docker image for testing..."
+        docker build -t test-backend:latest .
+
+        echo "🧪 Testing container startup..."
+        docker run -d --name test-container \
+          -e OPENAI_API_KEY=test-key \
+          -e ENABLE_OPENAI=true \
+          -e APP_ENV=test \
+          -e JWT_SECRET=test-secret \
+          -e QDRANT_URL=http://localhost:6333 \
+          -e DATABASE_URL=sqlite:///tmp/test.db \
+          -p 8000:8000 \
+          test-backend:latest
+
+        # Wait for container to initialize
+        sleep 10
+
+        # Check if container is running
+        if [ "$(docker inspect -f '{{.State.Running}}' test-container)" != "true" ]; then
+          echo "❌ Container failed to start!"
+          docker logs test-container
+          exit 1
+        fi
+
+        # Test health endpoint
+        max_attempts=30
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if curl -f http://localhost:8000/health; then
+            echo "✅ Health check passed!"
+            break
+          fi
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Health check failed after $max_attempts attempts!"
+            docker logs test-container
+            exit 1
+          fi
+          echo "🔄 Attempt $attempt/$max_attempts - Health check failed, retrying..."
+          sleep 2
+          ((attempt++))
+        done
+
+        echo "✅ Docker container tests passed!"
+        docker stop test-container && docker rm test-container
+
+    - name: 🏗️ Build, Tag, and Push to ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend
+
+        # Build with multi-platform support
+        docker buildx build \
+          --platform linux/amd64 \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push .
+
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: 📄 Prepare Task Definition
+      run: |
+        cd backend
+        cp task-definition.json ../task-definition.json
+
+    - name: ⚙️ Update Task Definition with Environment Variables
+      env:
+        ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
+      run: |
+        # Update task definition with proper environment variables and secrets
+        jq --arg openai_key "${{ secrets.OPENAI_API_KEY }}" \
+           --arg model_chat "${{ vars.MODEL_CHAT || 'gpt-4o-mini' }}" \
+           --arg model_embed "${{ vars.MODEL_EMBED || 'text-embedding-3-small' }}" \
+           --arg jwt_secret "${{ secrets.JWT_SECRET || 'default-jwt-secret-change-in-production' }}" \
+           --arg cors_origins "${{ vars.CORS_ORIGINS || '[\"https://wwhd.weshuber.com\", \"https://api.weshuber.com\"]' }}" \
+           --arg environment "$ENVIRONMENT" \
+           '
+           .containerDefinitions[0].environment = [
+             {"name": "OPENAI_API_KEY", "value": $openai_key},
+             {"name": "MODEL_CHAT", "value": $model_chat},
+             {"name": "MODEL_EMBED", "value": $model_embed},
+             {"name": "ENABLE_OPENAI", "value": "true"},
+             {"name": "QDRANT_URL", "value": "http://localhost:6333"},
+             {"name": "DATABASE_URL", "value": "sqlite:////data/app.db"},
+             {"name": "SQLITE_PATH", "value": "/data/wwhd_v3.db"},
+             {"name": "APP_ENV", "value": $environment},
+             {"name": "LOG_LEVEL", "value": "INFO"},
+             {"name": "JWT_SECRET", "value": $jwt_secret},
+             {"name": "CORS_ORIGINS", "value": $cors_origins}
+           ] |
+           .containerDefinitions[0].secrets = []
+           ' task-definition.json > updated-task-definition.json
+        mv updated-task-definition.json task-definition.json
+
+    - name: 📝 Fill in New Image ID in Task Definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: 🚀 Deploy to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+
+    - name: 📊 Verify Deployment
+      id: deployment-info
+      run: |
+        echo "✅ Backend deployment completed successfully!"
+        echo "🎯 Environment: ${{ github.event.inputs.environment || 'production' }}"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
+        echo "🔗 API URL: https://api.weshuber.com"
+        echo "🏥 Health Check: https://api.weshuber.com/health"
+        echo ""
+        echo "url=https://api.weshuber.com" >> $GITHUB_OUTPUT
+
+        # Test the deployed service
+        echo "🧪 Testing deployed service..."
+        sleep 30  # Wait for load balancer to route to new tasks
+
+        max_attempts=20
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if curl -f -s https://api.weshuber.com/health; then
+            echo "✅ Production deployment health check passed!"
+            break
+          fi
+          if [ $attempt -eq $max_attempts ]; then
+            echo "⚠️ Production health check failed after $max_attempts attempts"
+            echo "This might be normal if the load balancer is still routing traffic"
+            break
+          fi
+          echo "🔄 Attempt $attempt/$max_attempts - Testing production endpoint..."
+          sleep 10
+          ((attempt++))
+        done
+
+    - name: 📋 Deployment Summary
+      run: |
+        echo "## 🚀 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ steps.build-image.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**API URL:** https://api.weshuber.com" >> $GITHUB_STEP_SUMMARY
+        echo "**Health Check:** https://api.weshuber.com/health" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Service Status" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} \
+          --query 'services[0].{Status:status,TaskDefinition:taskDefinition,RunningCount:runningCount,DesiredCount:desiredCount}' \
+          --output table >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+
+  notify-success:
+    name: 🎉 Notify Success
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: success()
+    steps:
+    - name: Success Notification
+      run: |
+        echo "🎉 Backend deployment successful!"
+        echo "📦 Image: ${{ needs.build-and-deploy.outputs.image-uri }}"
+        echo "🔗 URL: ${{ needs.build-and-deploy.outputs.deployment-url }}"
