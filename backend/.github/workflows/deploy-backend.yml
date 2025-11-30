@@ -291,6 +291,46 @@ jobs:
           done
         fi
 
+    - name: 👥 Create Production Users
+      run: |
+        echo "👥 Creating production users via API..."
+
+        # Wait a bit more for service to be fully ready
+        sleep 15
+
+        # Create bulk import user for data import via API (no authentication required for registration)
+        echo "🔧 Creating bulk_import user for API-based data import..."
+
+        USER_RESPONSE=$(curl -s -X POST "https://api.weshuber.com/api/v1/auth/register" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "username": "bulk_import",
+            "email": "bulk_import@wwhd.local",
+            "password": "bulk123",
+            "full_name": "Bulk Import User"
+          }' || echo "FAILED")
+
+        if [[ "$USER_RESPONSE" == *"id"* ]]; then
+          echo "✅ bulk_import user created successfully!"
+          echo "📋 User details: $(echo "$USER_RESPONSE" | jq -r '.username + " (ID: " + (.id | tostring) + ")"')"
+        elif [[ "$USER_RESPONSE" == *"already registered"* ]]; then
+          echo "ℹ️ bulk_import user already exists - this is expected on redeployments"
+        else
+          echo "⚠️ Unexpected response creating user: $USER_RESPONSE"
+          echo "Manual user creation may be needed"
+        fi
+
+        echo ""
+        echo "📝 Available users for production:"
+        echo "   testuser / testpass123 (created automatically on startup)"
+        echo "   bulk_import / bulk123 (for API data import)"
+        echo ""
+        echo "🔗 Ready for remote data import using:"
+        echo "   python api_bulk_import.py --api-url https://api.weshuber.com"
+        echo ""
+        echo "🧪 Test authentication:"
+        echo "   curl -X POST https://api.weshuber.com/api/v1/auth/token -d 'username=bulk_import&password=bulk123'"
+
     - name: 📋 Deployment Summary
       run: |
         echo "## 🚀 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
@@ -299,6 +339,13 @@ jobs:
         echo "**Image:** \`${{ steps.build-image.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
         echo "**API URL:** https://api.weshuber.com" >> $GITHUB_STEP_SUMMARY
         echo "**Health Check:** https://api.weshuber.com/health" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 👥 User Accounts" >> $GITHUB_STEP_SUMMARY
+        echo "- **testuser** / testpass123 (created automatically)" >> $GITHUB_STEP_SUMMARY
+        echo "- **bulk_import** / bulk123 (for API data import)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Ready for Data Import" >> $GITHUB_STEP_SUMMARY
+        echo "\`python api_bulk_import.py --api-url https://api.weshuber.com\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Service Status" >> $GITHUB_STEP_SUMMARY
         echo "```" >> $GITHUB_STEP_SUMMARY
