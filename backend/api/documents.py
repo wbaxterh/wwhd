@@ -130,6 +130,7 @@ async def upload_document(
             vector_id=vector_id,
             embedding_model=settings.model_embed,
             uploaded_by=current_user.id,
+            youtube_url=youtube_url,
             metadata_json=metadata if metadata else None
         )
 
@@ -187,6 +188,7 @@ async def create_document(
             vector_id=vector_id,
             embedding_model=settings.model_embed,
             uploaded_by=current_user.id,
+            youtube_url=document_data.youtube_url,
             metadata_json=metadata if metadata else None,
             source_url=document_data.source_url
         )
@@ -247,6 +249,10 @@ async def update_document(
 
         # Handle metadata updates
         if document_data.youtube_url is not None:
+            # Update the dedicated youtube_url field
+            update_data["youtube_url"] = document_data.youtube_url
+
+            # Also update metadata_json for consistency
             current_metadata = document.metadata_json or {}
             if document_data.youtube_url:
                 current_metadata["youtube_url"] = document_data.youtube_url

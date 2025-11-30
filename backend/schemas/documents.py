@@ -1,7 +1,8 @@
 """Document schemas for knowledge base management"""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import json
 
 
 class DocumentBase(BaseModel):
@@ -40,6 +41,7 @@ class DocumentResponse(BaseModel):
     title: str
     content: str
     source_url: Optional[str]
+    youtube_url: Optional[str]  # Now a direct field, not a computed property
     vector_id: Optional[str]
     embedding_model: Optional[str]
     author: Optional[str] = None
@@ -52,20 +54,24 @@ class DocumentResponse(BaseModel):
     retrieval_count: int = 0
     avg_relevance_score: Optional[float] = None
 
-    # Computed properties
-    @property
-    def youtube_url(self) -> Optional[str]:
-        """Get YouTube URL from metadata"""
-        if self.metadata_json:
-            return self.metadata_json.get("youtube_url")
-        return None
+    # Validators
+    @validator('metadata_json', pre=True)
+    def parse_metadata_json(cls, v):
+        """Parse metadata_json if it's a string"""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return None
+        return v
 
+    # Computed properties
     @property
     def is_transcript(self) -> bool:
         """Check if this document is a transcript"""
         if self.metadata_json:
             return self.metadata_json.get("is_transcript", False)
-        return False
+        return self.youtube_url is not None
 
     class Config:
         from_attributes = True
