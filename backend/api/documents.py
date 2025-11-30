@@ -335,3 +335,58 @@ async def delete_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete document: {str(e)}"
         )
+
+@router.delete("/")
+async def delete_all_documents(
+    namespace: Optional[str] = None,
+    confirm: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete all documents, optionally filtered by namespace"""
+
+    if not confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must set confirm=true to delete all documents"
+        )
+
+    try:
+        # Get documents to delete
+        query = select(Document)
+        if namespace:
+            query = query.where(Document.namespace == namespace)
+
+        result = await db.execute(query)
+        documents = result.scalars().all()
+
+        deleted_count = len(documents)
+
+        # Delete from vector database
+        qdrant_service = QdrantService()
+        for document in documents:
+            await qdrant_service.delete_document(
+                namespace=document.namespace,
+                document_id=str(document.id)
+            )
+
+        # Delete from SQL database
+        if namespace:
+            await db.execute(delete(Document).where(Document.namespace == namespace))
+        else:
+            await db.execute(delete(Document))
+
+        await db.commit()
+
+        message = f"Deleted {deleted_count} documents"
+        if namespace:
+            message += f" from namespace '{namespace}'"
+
+        return {"message": message, "deleted_count": deleted_count}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete documents: {str(e)}"
+        )
