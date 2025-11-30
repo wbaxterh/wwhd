@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthProvider } from '@/contexts/auth';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { ReactNode } from 'react';
 
 interface ClientProvidersProps {
@@ -9,8 +10,10 @@ interface ClientProvidersProps {
 
 export function ClientProviders({ children }: ClientProvidersProps) {
   return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

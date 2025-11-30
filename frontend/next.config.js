@@ -3,8 +3,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Disable static export for now since we're using API routes
-  // We can enable this later when we remove the proxy API routes
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
 }
 
 module.exports = nextConfig

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { AuthModal } from '@/components/AuthModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Database, MessageCircle, ArrowLeft, Upload, Plus } from 'lucide-react';
 
 interface Document {
   id: number;
@@ -87,7 +89,7 @@ function KnowledgeBaseInterface() {
 
   const loadNamespaces = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/namespaces`, {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -111,7 +113,7 @@ function KnowledgeBaseInterface() {
         params.append('namespace', selectedNamespace);
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/?${params}`, {
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -185,7 +187,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/upload`, {
         method: 'POST',
         headers: {
@@ -228,7 +230,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/`, {
         method: 'POST',
         headers: {
@@ -263,7 +265,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/${editingDocument.id}`, {
         method: 'PUT',
         headers: {
@@ -299,7 +301,7 @@ function KnowledgeBaseInterface() {
 
     try {
       setIsLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://wwhd-alb-1530831557.us-west-2.elb.amazonaws.com';
+      const backendUrl = 'https://api.weshuber.com';
       const response = await fetch(`${backendUrl}/api/v1/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
@@ -342,21 +344,25 @@ function KnowledgeBaseInterface() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-foreground">Knowledge Base</h1>
-              <span className="text-sm text-muted-foreground">Manage documents and training data</span>
+              <Database className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-bold text-foreground">Knowledge Base</h1>
+              <span className="text-sm text-muted-foreground hidden sm:block">Manage documents and training data</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <a
                 href="/chat"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
-                → Chat
+                <MessageCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Chat</span>
               </a>
+              <ThemeToggle />
               <a
                 href="/"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted transition-colors"
               >
-                ← Back to Home
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Home</span>
               </a>
             </div>
           </div>
@@ -412,15 +418,19 @@ function KnowledgeBaseInterface() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowUploadForm(true)}
-                className="px-4 py-2 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors shadow-md"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
-                Upload PDF
+                <Upload className="h-4 w-4" />
+                <span className="hidden sm:inline">Upload PDF</span>
+                <span className="sm:hidden">Upload</span>
               </button>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-4 py-2 border border-border text-foreground rounded-md hover:bg-muted transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
               >
-                Create Document
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Create Document</span>
+                <span className="sm:hidden">Create</span>
               </button>
             </div>
           </div>
@@ -535,7 +545,7 @@ function KnowledgeBaseInterface() {
                     <button
                       type="button"
                       onClick={() => handleCustomNamespaceSubmit('upload')}
-                      className="px-3 py-2 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
+                      className="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                       disabled={!customNamespace.trim()}
                     >
                       ✓
@@ -603,7 +613,7 @@ function KnowledgeBaseInterface() {
                 <button
                   type="submit"
                   disabled={isLoading || !selectedFile}
-                  className="px-4 py-2 bg-white text-slate-900 rounded-md hover:bg-slate-100 disabled:opacity-50 transition-colors shadow-md"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-md"
                 >
                   {isLoading ? 'Uploading...' : 'Upload'}
                 </button>
@@ -639,7 +649,7 @@ function KnowledgeBaseInterface() {
                       <button
                         type="button"
                         onClick={() => handleCustomNamespaceSubmit('edit')}
-                        className="px-3 py-2 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
+                        className="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                         disabled={!customNamespaceEdit.trim()}
                       >
                         ✓
@@ -734,7 +744,7 @@ function KnowledgeBaseInterface() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-4 py-2 bg-white text-slate-900 rounded-md hover:bg-slate-100 disabled:opacity-50 transition-colors shadow-md"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-md"
                 >
                   {isLoading ? 'Saving...' : editingDocument ? 'Update' : 'Create'}
                 </button>
