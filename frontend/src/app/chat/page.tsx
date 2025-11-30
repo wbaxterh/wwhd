@@ -6,6 +6,7 @@ import { AuthModal } from '@/components/AuthModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import ReactMarkdown from 'react-markdown';
 import { User, Bot, ArrowLeft, Database } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface Citation {
   title: string;
@@ -63,7 +64,7 @@ function MarkdownRenderer({ content }: { content: string }) {
 }
 
 function ChatInterface() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,10 +73,10 @@ function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthLoading && !isAuthenticated) {
       setShowAuthModal(true);
     }
-  }, [isAuthenticated]);
+  }, [isAuthLoading, isAuthenticated]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,8 +101,7 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const backendUrl = 'https://api.weshuber.com';
-      const response = await fetch(`${backendUrl}/api/v1/chat/stream`, {
+      const response = await fetch(`${API_URL}/api/v1/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,25 +194,155 @@ function ChatInterface() {
     }
   };
 
+  const handleStarterQuestion = async (question: string) => {
+    setInput(question);
+
+    // Create a fake form submission to trigger handleSubmit
+    const fakeEvent = {
+      preventDefault: () => {},
+    } as React.FormEvent;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: question
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          content: question
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 503) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Backend service is unavailable');
+        }
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = '';
+      let citations: Citation[] = [];
+
+      const assistantMessageObj: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '',
+        citations: []
+      };
+
+      setMessages(prev => [...prev, assistantMessageObj]);
+      setIsStreaming(true);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.type === 'token' && parsed.content) {
+                  assistantMessage += parsed.content;
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === assistantMessageObj.id
+                      ? { ...msg, content: assistantMessage }
+                      : msg
+                  ));
+                } else if (parsed.type === 'citation' && parsed.citations) {
+                  citations = parsed.citations;
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === assistantMessageObj.id
+                      ? { ...msg, citations: citations }
+                      : msg
+                  ));
+                } else if (parsed.type === 'done') {
+                  break;
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
+      }]);
+    }
+
+    setIsLoading(false);
+    setIsStreaming(false);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto py-4 space-y-6 w-full">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground mt-20">
-            <div className="max-w-md mx-auto">
+            <div className="w-full max-w-2xl mx-auto px-4">
               <Bot className="h-12 w-12 mx-auto mb-4 text-primary" />
               <h3 className="text-xl font-semibold mb-2">Welcome to W.W.H.D.</h3>
-              <p className="text-sm">Ask Herman for wisdom and guidance. What's on your mind?</p>
+              <p className="text-sm mb-6">Ask Herman for wisdom and guidance. What's on your mind?</p>
+
+              {/* Starter Questions */}
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground/70 mb-3">Try asking about:</p>
+                <div className="grid gap-2">
+                  <button
+                    onClick={() => handleStarterQuestion("Give me advice for starting my business")}
+                    className="p-3 text-sm text-left border border-border rounded-lg hover:bg-muted/50 transition-colors text-foreground/80 hover:text-foreground"
+                  >
+                    Give me advice for starting my business
+                  </button>
+                  <button
+                    onClick={() => handleStarterQuestion("How can I improve my relationship?")}
+                    className="p-3 text-sm text-left border border-border rounded-lg hover:bg-muted/50 transition-colors text-foreground/80 hover:text-foreground"
+                  >
+                    How can I improve my relationship?
+                  </button>
+                  <button
+                    onClick={() => handleStarterQuestion("How do I maintain focus in meditation?")}
+                    className="p-3 text-sm text-left border border-border rounded-lg hover:bg-muted/50 transition-colors text-foreground/80 hover:text-foreground"
+                  >
+                    How do I maintain focus in meditation?
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {messages.map((message) => (
-          <div key={message.id} className="w-full">
-            <div className={`flex gap-4 max-w-none sm:max-w-4xl mx-auto ${
+          <div key={message.id} className="w-full px-4">
+            <div className={`flex gap-4 ${
               message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
             }`}>
               {/* Avatar */}
@@ -285,8 +415,8 @@ function ChatInterface() {
 
         {/* Loading Animation */}
         {isLoading && !isStreaming && (
-          <div className="w-full">
-            <div className="flex gap-4 max-w-none sm:max-w-4xl mx-auto">
+          <div className="w-full px-4">
+            <div className="flex gap-4">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                 <Bot className="h-4 w-4" />
               </div>
@@ -309,7 +439,7 @@ function ChatInterface() {
 
       {/* Chat Input */}
       <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="mx-auto">
           <div className="flex gap-3">
             <div className="flex-1 min-w-0">
               <textarea
@@ -374,7 +504,7 @@ export default function ChatPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex">
+      <main className="flex-1 w-full">
         <ChatInterface />
       </main>
     </div>
