@@ -38,7 +38,23 @@
         },
         {
           "name": "CORS_ORIGINS",
-          "value": "[\"http://localhost:3000\", \"http://localhost:3001\", \"https://localhost:3000\", \"https://localhost:3001\"]"
+          "value": "*"
+        },
+        {
+          "name": "DATABASE_URL",
+          "value": "sqlite:////data/app.db"
+        },
+        {
+          "name": "ENABLE_OPENAI",
+          "value": "true"
+        },
+        {
+          "name": "MODEL_CHAT",
+          "value": "gpt-4o-mini"
+        },
+        {
+          "name": "MODEL_EMBED",
+          "value": "text-embedding-3-small"
         }
       ],
       "secrets": [

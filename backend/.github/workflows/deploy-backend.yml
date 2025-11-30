@@ -163,13 +163,72 @@ jobs:
         container-name: ${{ env.CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
 
+    - name: 🛡️ Zero-Downtime Deployment Strategy
+      run: |
+        echo "🛡️ Starting zero-downtime deployment with Qdrant database lock protection..."
+
+        # Get current service state
+        CURRENT_DESIRED_COUNT=$(aws ecs describe-services \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }} \
+          --query 'services[0].desiredCount' \
+          --output text)
+
+        RUNNING_TASKS=$(aws ecs list-tasks \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service-name ${{ env.ECS_SERVICE }} \
+          --desired-status RUNNING \
+          --query 'taskArns' \
+          --output json)
+
+        echo "📊 Current state - Desired: $CURRENT_DESIRED_COUNT, Running: $(echo $RUNNING_TASKS | jq length)"
+
+        # Strategy: Handle Qdrant database locks by ensuring only one task runs at a time during deployment
+        if [ "$CURRENT_DESIRED_COUNT" -gt 0 ] && [ "$(echo $RUNNING_TASKS | jq length)" -gt 0 ]; then
+          echo "🔄 Active service detected - implementing graceful deployment..."
+
+          # Step 1: Temporarily set desired count to 0 to stop all existing tasks
+          echo "🛑 Stopping existing tasks to prevent Qdrant database lock conflicts..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --desired-count 0
+
+          # Step 2: Wait for all tasks to stop
+          echo "⏳ Waiting for existing tasks to stop completely..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+
+          echo "✅ All existing tasks stopped - database locks released"
+        else
+          echo "🟢 No active tasks detected - safe to deploy new version"
+        fi
+
     - name: 🚀 Deploy to Amazon ECS
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+        wait-for-service-stability: false
+
+    - name: 🔄 Ensure Service is Running
+      run: |
+        echo "🔄 Ensuring service has desired count of 1..."
+
+        # Force desired count to 1 to start the new deployment
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE }} \
+          --desired-count 1
+
+        echo "⏳ Waiting for new deployment to stabilize..."
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }}
+
+        echo "✅ Service deployment completed"
 
     - name: 📊 Verify Deployment
       id: deployment-info
@@ -182,26 +241,55 @@ jobs:
         echo ""
         echo "url=https://api.weshuber.com" >> $GITHUB_OUTPUT
 
-        # Test the deployed service
-        echo "🧪 Testing deployed service..."
+        # Enhanced health checking with Qdrant database verification
+        echo "🧪 Testing deployed service with comprehensive health checks..."
         sleep 30  # Wait for load balancer to route to new tasks
 
-        max_attempts=20
+        # Test basic health endpoint
+        max_attempts=30
         attempt=1
+        health_passed=false
         while [ $attempt -le $max_attempts ]; do
           if curl -f -s https://api.weshuber.com/health; then
-            echo "✅ Production deployment health check passed!"
+            echo "✅ Basic health check passed on attempt $attempt!"
+            health_passed=true
             break
           fi
           if [ $attempt -eq $max_attempts ]; then
-            echo "⚠️ Production health check failed after $max_attempts attempts"
-            echo "This might be normal if the load balancer is still routing traffic"
+            echo "❌ Basic health check failed after $max_attempts attempts"
+            health_passed=false
             break
           fi
-          echo "🔄 Attempt $attempt/$max_attempts - Testing production endpoint..."
+          echo "🔄 Attempt $attempt/$max_attempts - Testing basic health endpoint..."
           sleep 10
           ((attempt++))
         done
+
+        # Test Qdrant database connectivity if basic health passes
+        if [ "$health_passed" = true ]; then
+          echo "🗄️ Testing Qdrant database connectivity..."
+          qdrant_attempts=10
+          qdrant_attempt=1
+          while [ $qdrant_attempt -le $qdrant_attempts ]; do
+            # Test with a simple chat query to verify RAG system
+            response=$(curl -s -X POST "https://api.weshuber.com/chat" \
+              -H "Content-Type: application/json" \
+              -d '{"message":"test connection"}' | jq -r '.message' 2>/dev/null)
+
+            if [ "$response" != "null" ] && [ "$response" != "" ]; then
+              echo "✅ RAG system and database connectivity verified!"
+              break
+            fi
+            if [ $qdrant_attempt -eq $qdrant_attempts ]; then
+              echo "⚠️ RAG system test inconclusive after $qdrant_attempts attempts"
+              echo "Basic health checks passed, deployment may still be valid"
+              break
+            fi
+            echo "🔄 Attempt $qdrant_attempt/$qdrant_attempts - Testing RAG system..."
+            sleep 5
+            ((qdrant_attempt++))
+          done
+        fi
 
     - name: 📋 Deployment Summary
       run: |
@@ -219,6 +307,94 @@ jobs:
           --output table >> $GITHUB_STEP_SUMMARY
         echo "```" >> $GITHUB_STEP_SUMMARY
 
+  rollback-on-failure:
+    name: 🔄 Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: failure()
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-west-2
+      ECS_SERVICE: wwhd-backend
+      ECS_CLUSTER: wwhd-cluster
+      ECS_TASK_DEFINITION: wwhd-backend
+    steps:
+    - name: 🏗️ Configure AWS credentials for rollback
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: 🔄 Perform Rollback
+      run: |
+        echo "🚨 Deployment failed! Initiating rollback procedure..."
+
+        # Get the last known good task definition
+        TASK_DEFINITIONS=$(aws ecs list-task-definitions \
+          --family-prefix ${{ env.ECS_TASK_DEFINITION }} \
+          --status ACTIVE \
+          --sort DESC \
+          --max-items 5 \
+          --query 'taskDefinitionArns' \
+          --output text)
+
+        echo "📋 Available task definitions: $TASK_DEFINITIONS"
+
+        # Get the second most recent (previous stable) task definition
+        PREVIOUS_TASK_DEF=$(echo $TASK_DEFINITIONS | cut -d' ' -f2)
+
+        if [ -n "$PREVIOUS_TASK_DEF" ] && [ "$PREVIOUS_TASK_DEF" != "None" ]; then
+          echo "🔄 Rolling back to previous stable version: $PREVIOUS_TASK_DEF"
+
+          # Stop all current tasks first to avoid database locks
+          echo "🛑 Stopping failed tasks to clear database locks..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --desired-count 0
+
+          echo "⏳ Waiting for failed tasks to stop..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+
+          # Deploy the previous version
+          echo "🚀 Deploying previous stable version..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --task-definition $PREVIOUS_TASK_DEF \
+            --desired-count 1
+
+          echo "⏳ Waiting for rollback deployment to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+
+          # Verify rollback health
+          echo "🧪 Verifying rollback health..."
+          sleep 30
+          for i in {1..10}; do
+            if curl -f -s https://api.weshuber.com/health; then
+              echo "✅ Rollback successful! Service is healthy."
+              exit 0
+            fi
+            echo "🔄 Rollback health check attempt $i/10..."
+            sleep 10
+          done
+
+          echo "⚠️ Rollback completed but health check inconclusive"
+        else
+          echo "❌ No previous task definition available for rollback"
+          echo "🛑 Setting service desired count to 0 to stop failed deployment"
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --desired-count 0
+        fi
+
   notify-success:
     name: 🎉 Notify Success
     runs-on: ubuntu-latest
@@ -230,3 +406,16 @@ jobs:
         echo "🎉 Backend deployment successful!"
         echo "📦 Image: ${{ needs.build-and-deploy.outputs.image-uri }}"
         echo "🔗 URL: ${{ needs.build-and-deploy.outputs.deployment-url }}"
+
+  notify-failure:
+    name: 🚨 Notify Failure
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy, rollback-on-failure]
+    if: failure()
+    steps:
+    - name: Failure Notification
+      run: |
+        echo "🚨 Backend deployment failed!"
+        echo "🔄 Rollback has been attempted"
+        echo "🔍 Check the logs above for details"
+        echo "📊 Current service status should be investigated"

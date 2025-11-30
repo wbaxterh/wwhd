@@ -260,13 +260,14 @@ async def update_document(
             if hasattr(document, field):
                 setattr(document, field, value)
 
-        # If content changed, update vector database
-        if document_data.content is not None and document.vector_id:
+        # If content OR metadata changed, update vector database
+        # This ensures Qdrant stays in sync with SQLite for all changes
+        if document_data.content is not None or document_data.youtube_url is not None or document_data.title is not None:
             qdrant_service = QdrantService()
             await qdrant_service.update_document(
                 namespace=document.namespace,
-                document_id=document.vector_id,
-                content=document_data.content,
+                document_id=str(document.id),  # Use document ID not vector_id
+                content=document.content,  # Use current content (may be updated)
                 metadata={
                     "document_id": str(document.id),
                     "title": str(document.title),
@@ -309,12 +310,12 @@ async def delete_document(
 
     try:
         # Delete from vector database
-        if document.vector_id:
-            qdrant_service = QdrantService()
-            await qdrant_service.delete_document(
-                namespace=document.namespace,
-                document_id=document.vector_id
-            )
+        # Use the document ID (not vector_id) as that's what's stored in Qdrant metadata
+        qdrant_service = QdrantService()
+        await qdrant_service.delete_document(
+            namespace=document.namespace,
+            document_id=str(document.id)
+        )
 
         # Delete from SQL database
         await db.execute(delete(Document).where(Document.id == document_id))

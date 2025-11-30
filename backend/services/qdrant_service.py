@@ -151,12 +151,13 @@ class QdrantService:
             collection_name = f"documents_{namespace}"
 
             # Get all points for this document
+            # document_id is stored inside the metadata object
             scroll_result = self.client.scroll(
                 collection_name=collection_name,
                 scroll_filter=models.Filter(
                     must=[
                         models.FieldCondition(
-                            key="document_id",
+                            key="metadata.document_id",
                             match=models.MatchValue(value=str(document_id))
                         )
                     ]

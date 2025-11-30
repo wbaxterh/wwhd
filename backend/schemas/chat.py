@@ -7,10 +7,9 @@ from datetime import datetime
 class Source(BaseModel):
     """Citation source from RAG"""
     title: str
-    content: str
     url: Optional[str] = None
-    score: float = Field(..., ge=0, le=1)
-    metadata: Optional[Dict[str, Any]] = None
+    youtube_url: Optional[str] = None
+    timestamp: Optional[str] = None
 
 
 class MessageCreate(BaseModel):

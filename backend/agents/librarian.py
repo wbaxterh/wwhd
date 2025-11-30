@@ -26,7 +26,7 @@ class LibrarianAgent:
         # Retrieval parameters from AGENTS.md
         self.search_config = {
             "top_k": 5,
-            "score_threshold": 0.6,  # Increased to prevent low-quality matches that cause hallucination
+            "score_threshold": 0.3,  # Lowered to allow retrieval while still filtering noise
             "include_metadata": True,
             "use_mmr": False  # Maximal Marginal Relevance - disabled in v0.1
         }
@@ -156,6 +156,7 @@ class LibrarianAgent:
                     "metadata": {
                         "namespace": namespace,
                         "source_url": result.payload.get("source_url", ""),
+                        "youtube_url": result.payload.get("metadata", {}).get("youtube_url", result.payload.get("youtube_url", "")),
                         "source_title": result.payload.get("metadata", {}).get("title", result.payload.get("title", "Unknown Source")),
                         "timestamp": result.payload.get("transcript_timestamp", ""),
                         "tags": result.payload.get("tags", []),
@@ -179,9 +180,14 @@ class LibrarianAgent:
 
     def _format_citation(self, metadata: Dict) -> Dict:
         """Format citation according to API spec and PROMPTS.md"""
+        # Prioritize YouTube URL as the primary URL if available
+        youtube_url = metadata.get("youtube_url", "")
+        source_url = metadata.get("source_url", "")
+
         return {
             "title": metadata.get("source_title", "Unknown Source"),
-            "url": metadata.get("source_url", ""),
+            "url": youtube_url if youtube_url else source_url,
+            "youtube_url": youtube_url,
             "timestamp": metadata.get("timestamp", "")
         }
 
@@ -199,9 +205,14 @@ class LibrarianAgent:
 
             # Include citations with source title (URL is optional)
             if meta.get("source_title"):
+                # Prioritize YouTube URL as the primary URL if available
+                youtube_url = meta.get("youtube_url", "")
+                source_url = meta.get("source_url", "")
+
                 citation = {
                     "title": meta["source_title"],
-                    "url": meta.get("source_url", ""),
+                    "url": youtube_url if youtube_url else source_url,
+                    "youtube_url": youtube_url,
                     "timestamp": meta.get("timestamp", "")
                 }
 
